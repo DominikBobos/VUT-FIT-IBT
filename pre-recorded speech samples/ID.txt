@@ -1,0 +1,28 @@
+[Category(A-Beginning,B-Anywhere,C-End)ID]_[Language]-[Sex]-[Transcription]
+
+A00_English-Male-The number you've called is disconnected
+A01_English-Male-The number you've called is no longer in service
+A02_English-Male-If You would like to make a call please hang up and try again
+A03_English-Female-If You would like to make a call please hang up and try again
+A04_English-Male-Due to heavy call volume, all circuits are busy
+A05_English-Female-Due to heavy call volume, all circuits are busy
+A06_English-Male-Were sorry, all circuits are busy please try again later
+A07_English-Male-Your call will be answered in the order it was received
+A08_English-Female-Thank you for calling please leave a message
+A10_CzechEnglish-Male-Je nám líto, ale zadali ste nesprávne číslo. We are sorry but you've entered an incorect number
+A11_CzechEnglish-Male-Volaný učastník je dočasně nedostupný, opakujte prosím  volání později. The number you are calling is unavailable at the moment, please call back later
+A20_SlovakEnglish-Male-Volané číslo neexistuje. The number you have dialed does not exist
+A21_SlovakEnglish-Male-Volaný učastník je dočasne nedostupný, opakujte prosím volanie neskôr. The number you are calling is currently unavailable at the, please try your call later
+A22_SlovakEnglish-Female-Číslo, ktoré voláte je momentálne nedostupné, voľbu opakujte neskôr prosím. The number you have dialed is not reachable for the moment, please try again later
+B00_English-Male-Please hold for a very important message
+B01_English-Male-If you would like to leave a message, press one
+B02_English-Female-If you would like to leave a message, press one
+B03_English-Male-No one is available to take your call, please leave a message
+B04_English-Male-No one is available to take your call, please leave a message
+B10_CzechEnglish-Male-Čekejte prosím, volaný učastník právě hovoří. The number you have dialed is busy
+B20_SlovakEnglish-Male-Čakajte prosím, volaný učastník práva hovorí. The number you have dialed is busy
+B21_SlovakEnglish-Male-Čakajte prosím. Wait a moment please
+B22_SlovakEnglish-Female-Ľutujeme volané číslo je nedostupné, po zaznení zvukového signálu zanechajte odkaz *(beep)*
+C00_English-Female-Sorry the number you are calling just not answer at the moment, please try again later
+C10_CzechEnglish-Male-Volaný účastník se nehlásí, opakujte prosím volání později. The party you are calling is not answering, please try your call again later
+C20_SlovakEnglish-Male-Volaný účastník sa nehlási, opakujte prosím volánie neskôr. The party you are calling is not answering, please try your call again later
