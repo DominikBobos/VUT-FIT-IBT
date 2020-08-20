@@ -12,7 +12,7 @@ A08_English-Female-Thank you for calling please leave a message
 A10_CzechEnglish-Male-Je nám líto, ale zadali ste nesprávne číslo. We are sorry but you've entered an incorect number
 A11_CzechEnglish-Male-Volaný učastník je dočasně nedostupný, opakujte prosím  volání později. The number you are calling is unavailable at the moment, please call back later
 A20_SlovakEnglish-Male-Volané číslo neexistuje. The number you have dialed does not exist
-A21_SlovakEnglish-Male-Volaný učastník je dočasne nedostupný, opakujte prosím volanie neskôr. The number you are calling is currently unavailable at the, please try your call later
+A21_SlovakEnglish-Male-Volaný učastník je dočasne nedostupný, opakujte prosím volanie neskôr. The number you are calling is currently unavailable, please try your call later
 A22_SlovakEnglish-Female-Číslo, ktoré voláte je momentálne nedostupné, voľbu opakujte neskôr prosím. The number you have dialed is not reachable for the moment, please try again later
 B00_English-Male-Please hold for a very important message
 B01_English-Male-If you would like to leave a message, press one
