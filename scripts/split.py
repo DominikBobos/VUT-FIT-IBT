@@ -11,17 +11,21 @@ from collections import Counter         # for statistics
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--min", help="duration in minutes of the wanted cut length")     # how long cuttings we want in minutes
+parser.add_argument("--sec", help="duration in minutes of the wanted cut length")     # how long cuttings we want in minutes
 parser.add_argument("--src", help="source directory path")                            # directory to import
 parser.add_argument("--dst", help="destination directory path")                       # directory to export
 parser.add_argument("--stats", action="store_true", 
     help="show statistics about the wav files in either source or destination directory")
+parser.add_argument("--lt", help="Will cut longer recordings than specified in seconds")
+parser.add_argument("--st", help="Will cut shorter recordings than specified in seconds")
+parser.add_argument("--rm", action="store_true", help="Will remove the original file after splitting it")
 arguments = parser.parse_args()
 
-if not arguments.min:
-    sys.stderr.write("Please specify the duration in minutes of the wanted cut length using --min=NUMBER .\n")
+if not arguments.sec and not arguments.stats:
+    sys.stderr.write("Please specify the duration in seconds of the wanted cut length using --sec=NUMBER .\n")
     sys.exit(1)
-splitMin = int(arguments.min)
+if arguments.sec:
+    splitSec = int(arguments.sec)
 if not arguments.src:
     src = os.getcwd()
 else:
@@ -53,31 +57,47 @@ def get_audio_file(file):
 def get_duration(file):
     return AudioSegment.from_wav(file).duration_seconds
     
-def single_split(from_min, to_min, split_filename, file):
-    t1 = from_min * 60 * 1000
-    t2 = to_min * 60 * 1000
-    split_audio = AudioSegment.from_wav(file + '.wav')[t1:t2]
-    split_filename = split_filename.split("/")[-1]
-    print(split_filename)
-    split_audio.export(dst + split_filename, format="wav")
+def single_split(fromSec, toSec, splitFilename, file):
+    t1 = fromSec * 1000
+    t2 = toSec * 1000
+    splitAudio = AudioSegment.from_wav(file + '.wav')[t1:t2]
+    splitFilename = splitFilename.split("/")[-1]
+    print(splitFilename)
+    splitAudio.export(dst + splitFilename, format="wav")
     
-def multiple_split(splitMin):
+def multiple_split(splitSec):
     files = glob.glob(src+'*.wav')
     for file in files:  
-        print(file)
-        total_mins = get_duration(file) / 60
-        for i in range(0, math.ceil(total_mins), splitMin):
+        order = 0
+        if arguments.lt and int(arguments.lt) > get_duration(file):
+            continue
+        if arguments.st and int(arguments.st) < get_duration(file):
+            continue
+        try: 
+            file.split('_')
+            order = int(file.split('_')[1])
+        except:
+            pass
+        totalSec = get_duration(file)
+        try:
+            file.split('.')[2]
+            file = file.split('.')[0] + '.' + file.split('.')[1]
+        except:
             file = file.split('.')[0]
-            if i >= math.ceil(total_mins)-splitMin:
+        for i in range(0, math.ceil(totalSec), splitSec):
+            if i >= math.ceil(totalSec)-splitSec:
                 seconds = get_duration(file + '.wav')
-                seconds = seconds - i*60
-                split_filename = file + '_' + str(i//splitMin) + '_' + "{:.2f}".format(seconds / 60) + ".wav" 
+                seconds = seconds - i
+                splitFilename = file.split('_')[0] + '_' + str(order + i//splitSec) + '_' + "{:.2f}".format(seconds) + ".wav" 
             else:
-                split_filename = file + '_' + str(i//splitMin) + '_' + str(splitMin) + ".wav"
-            single_split(i, i+splitMin, split_filename, file)
-            print(str(i) + ' Done')
-            if i == math.ceil(total_mins)-1:
-                print('All splited successfully')
+                splitFilename = file.split('_')[0] + '_' + str(order + i//splitSec) + '_' + str(splitSec) + ".wav"
+            single_split(i, i+splitSec, splitFilename, file)
+            print(str(i//splitSec) + ' Done')
+            if i >= math.ceil(totalSec)-splitSec:
+                print('Splited successfully\n')
+        if arguments.rm and get_duration(file + '.wav') > splitSec:
+            print('Removing file: ', file + ".wav")
+            os.remove(file + '.wav')
 
 def count(files):
     statList = []
@@ -110,9 +130,11 @@ def stats():
         for item in dstStat.most_common():
             print("Records lengths [sec]: \t", item[0], "  \t Count: ", item[1])
         print("____________________________________________________________________________________\n")
+    if len(srcFiles) == 0 and len(dstFiles) == 0:
+        print("No statistics available.")
 
 if not arguments.stats:
-    multiple_split(splitMin)
+    multiple_split(splitSec)
 if arguments.stats:
     stats()
 
