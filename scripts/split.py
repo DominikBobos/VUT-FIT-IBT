@@ -62,7 +62,6 @@ def single_split(fromSec, toSec, splitFilename, file):
     t2 = toSec * 1000
     splitAudio = AudioSegment.from_wav(file + '.wav')[t1:t2]
     splitFilename = splitFilename.split("/")[-1]
-    print(splitFilename)
     splitAudio.export(dst + splitFilename, format="wav")
     
 def multiple_split(splitSec):
@@ -92,7 +91,7 @@ def multiple_split(splitSec):
             else:
                 splitFilename = file.split('_')[0] + '_' + str(order + i//splitSec) + '_' + str(splitSec) + ".wav"
             single_split(i, i+splitSec, splitFilename, file)
-            print(str(i//splitSec) + ' Done')
+            print(splitFilename.split('/')[-1], ' : ' ,str(i//splitSec) + ' Done')
             if i >= math.ceil(totalSec)-splitSec:
                 print('Splited successfully\n')
         if arguments.rm and get_duration(file + '.wav') > splitSec:
@@ -102,29 +101,36 @@ def multiple_split(splitSec):
 def count(files):
     statList = []
     total = 0
+    count = 0
     for file in files:
-        current = get_duration(file)
-        total += current
-        statList.append(current)
+        if arguments.lt and int(arguments.lt) > get_duration(file):
+            continue
+        elif arguments.st and int(arguments.st) < get_duration(file):
+            continue
+        else:
+            current = get_duration(file)
+            count += 1
+            total += current
+            statList.append(current)
     stat = Counter(statList)
-    return total, stat
+    return total, stat, count
 
 def stats():
     srcFiles = glob.glob(src+'*.wav')
     dstFiles = glob.glob(dst+'*.wav')
     if len(srcFiles) != 0:
-        srcTotal, srcStat = count(srcFiles)
+        srcTotal, srcStat, srcCount = count(srcFiles)
         print("____________________________________________________________________________________")
-        print("\nTotal count of all source recordings:  \t", len(srcFiles))
+        print("\nTotal count of all source recordings:  \t", srcCount)
         print("Total length of source records: \t", "{:.2f}".format(srcTotal), "[s] |", 
             "{:.2f}".format(srcTotal/60), "[m] |", "{:.2f}".format(srcTotal/3600), "[h]", "\n")
         for item in srcStat.most_common():
             print("Records lengths [sec]: \t", item[0], "  \t Count: ", item[1])
         print("____________________________________________________________________________________\n")
     if len(dstFiles) != 0:
-        dstTotal, dstStat = count(dstFiles)
+        dstTotal, dstStat, dstCount = count(dstFiles)
         print("____________________________________________________________________________________")
-        print("\nTotal count of destination recordings:  \t", len(dstFiles))
+        print("\nTotal count of destination recordings:  \t", dstCount)
         print("Total length of destination records: \t", "{:.2f}".format(dstTotal), "[sec] |", 
             "{:.2f}".format(dstTotal/60), "[min] |", "{:.2f}".format(dstTotal/3600), "[h]", "\n")
         for item in dstStat.most_common():
