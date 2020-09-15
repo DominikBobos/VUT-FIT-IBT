@@ -1,4 +1,8 @@
-# ADD HEADER
+##
+#   @file script.py
+#   @author Dominik Bobos 
+#   @brief Script for splitting audio files into multiple parts and showing statistics
+#
 
 from pydub import AudioSegment
 from librosa.core import load
