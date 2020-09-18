@@ -4,25 +4,28 @@
 #   @brief Script for splitting audio files into multiple parts and showing statistics
 #
 
-from pydub import AudioSegment
-from librosa.core import load
-import math
-import argparse
-import os, sys, glob
+from pydub import AudioSegment          # for splitting audio files
+from librosa.core import load           # for loading audio files
+import math                             # for rounding numbers
+import argparse                         # for parsing arguments
+import os, sys, glob                    # for file path, finding files, etc
 from collections import Counter         # for statistics
 
 #ffmpeg needed just mark it somewhere
 
 
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Arguments parsing
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 parser = argparse.ArgumentParser()
-parser.add_argument("--sec", help="duration in minutes of the wanted cut length")     # how long cuttings we want in minutes
+parser.add_argument("--sec", help="duration in seconds of the wanted cut length")     # how long cuttings we want in seconds
 parser.add_argument("--src", help="source directory path")                            # directory to import
 parser.add_argument("--dst", help="destination directory path")                       # directory to export
 parser.add_argument("--stats", action="store_true", 
     help="show statistics about the wav files in either source or destination directory")
-parser.add_argument("--lt", help="Will cut longer recordings than specified in seconds")
-parser.add_argument("--st", help="Will cut shorter recordings than specified in seconds")
-parser.add_argument("--rm", action="store_true", help="Will remove the original file after splitting it")
+parser.add_argument("--lt", help="Will cut longer recordings than specified in seconds")    # shows/splits audio longer than specified in seconds
+parser.add_argument("--st", help="Will cut shorter recordings than specified in seconds")   # shows/splits audio shorter than specified in seconds
+parser.add_argument("--rm", action="store_true", help="Will remove the original file after splitting it")   
 arguments = parser.parse_args()
 
 if not arguments.sec and not arguments.stats:
@@ -52,15 +55,29 @@ else:
             sys.exit(1)
 
 
+
 """''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Loads audio files from source directory 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 def get_audio_file(file):
     return [load(f) for f in glob.glob(file)]
 
+
+
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Gets duration in seconds from the given audio file
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 def get_duration(file):
     return AudioSegment.from_wav(file).duration_seconds
     
+
+
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Partial splitting of the given audio file
+Basically it cuts the given file from time fromSec to 
+toSec and export it to the destination directory dst 
+with given filename splitFilename.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 def single_split(fromSec, toSec, splitFilename, file):
     t1 = fromSec * 1000
     t2 = toSec * 1000
@@ -68,25 +85,34 @@ def single_split(fromSec, toSec, splitFilename, file):
     splitFilename = splitFilename.split("/")[-1]
     splitAudio.export(dst + splitFilename, format="wav")
     
+
+
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Splits all .wav files located in source directory src.
+Each segment is splitSec long - only the last segment is shorter 
+than splitSec (leftover).
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 def multiple_split(splitSec):
     files = glob.glob(src+'*.wav')
     for file in files:  
         order = 0
+        #filter out unwanted files
         if arguments.lt and int(arguments.lt) > get_duration(file):
             continue
         if arguments.st and int(arguments.st) < get_duration(file):
             continue
-        try: 
+        try:                    #test if the current file was processed before to get the order
             file.split('_')
-            order = int(file.split('_')[1])
+            order = int(file.split('_')[1]) 
         except:
             pass
-        totalSec = get_duration(file)
+        totalSec = get_duration(file)   # total duration
         try:
-            file.split('.')[2]
+            file.split('.')[2]          # test if the current file was processed before to get the right filename
             file = file.split('.')[0] + '.' + file.split('.')[1]
         except:
             file = file.split('.')[0]
+        #cut the file
         for i in range(0, math.ceil(totalSec), splitSec):
             if i >= math.ceil(totalSec)-splitSec:
                 seconds = get_duration(file + '.wav')
@@ -102,6 +128,13 @@ def multiple_split(splitSec):
             print('Removing file: ', file + ".wav")
             os.remove(file + '.wav')
 
+
+
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Counts the total count of all files
+counts the total duration of all files
+orders and counts the occurrences of files
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 def count(files):
     statList = []
     total = 0
@@ -119,6 +152,11 @@ def count(files):
     stat = Counter(statList)
     return total, stat, count
 
+
+
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Shows statistics about audio files in a given directory
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 def stats():
     srcFiles = glob.glob(src+'*.wav')
     dstFiles = glob.glob(dst+'*.wav')
@@ -147,54 +185,3 @@ if not arguments.stats:
     multiple_split(splitSec)
 if arguments.stats:
     stats()
-
-
-# from pydub import AudioSegment
-# from librosa.core import load
-# import math
-# import argparse
-
-
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--min")
-# arguments = parser.parse_args()
-# splitMin = arguments.system
-
-# class SplitWavAudioMubin():
-#     def __init__(self, folder, filename):
-#         self.folder = folder
-#         self.filename = filename
-#         self.filepath = folder + '/' + filename
-        
-#         self.audio = AudioSegment.from_wav(self.filepath)
-
-#     def get_audio_file(file):
-#         return [load(f) for f in glob.glob(file)]
-    
-#     def get_duration(self):
-#         return self.audio.duration_seconds
-    
-#     def single_split(self, from_min, to_min, split_filename):
-#         t1 = from_min * 60 * 1000
-#         t2 = to_min * 60 * 1000
-#         split_audio = self.audio[t1:t2]
-#         split_audio.export(self.folder + '/' + split_filename, format="wav")
-        
-#     def multiple_split(self, splitMin):
-#         total_mins = math.ceil(self.get_duration() / 60)
-#         for i in range(0, total_mins, splitMin):
-#             if i == total_mins - splitMin:
-#                 seconds = math.ceil(self.get_duration())
-#                 seconds = seconds - (total_mins-1)*60
-#                 split_fn = self.filename + '_' + str(i) + '_' + "{:.2f}".format(seconds / 60)
-#             else:
-#                 split_fn = self.filename + '_' + str(i) + '_' + str(splitMin)
-#             self.single_split(i, i+splitMin, split_fn)
-#             print(str(i) + ' Done')
-#             if i == total_mins - splitMin:
-#                 print('All splited successfully')
-
-# folder = '../'
-# file = 'sw02005-A.wav'
-# split_wav = SplitWavAudioMubin(folder, file)
-# split_wav.multiple_split(splitMin)
