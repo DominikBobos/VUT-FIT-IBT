@@ -11,6 +11,7 @@ import math                             # for rounding numbers
 import argparse, textwrap               # for parsing arguments
 import os, sys, glob, re                # for file path, finding files, etc
 import random as rand 	                # for random numbers generator
+import numpy
 
 
 """''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -33,8 +34,8 @@ parser.add_argument("--random", default=0, help="""Select severity of randomness
 Possible values are:
   0 = no random values, use the original values of the pre-recorded message
   1 = low differences, e.g. gain between -3dB+3dB, speed 0.95-1.05, repeat 1-10.0
-  2 = optimal differences, e.g. gain between -6dB+6dB, speed 0.85-1.15, repeat 0.9-30.0
-  3 = high differences, e.g. gain between -10dB+10dB, speed 0.8-1.2, repeat 0.8-50.0""") 
+  2 = optimal differences, e.g. gain between -6dB+6dB, speed 0.9-1.1, repeat 0.8-30.0
+  3 = high differences, e.g. gain between -10dB+6dB, speed 0.85-1.15, repeat 0.7-40.0""") 
 arguments = parser.parse_args()
 
 if arguments.mode and not re.match(r"^(a|b|c|A|B|C)([0-9][0-9])$|^(a|b|c|A|B|C)$", arguments.mode): 
@@ -97,16 +98,16 @@ if random == 0:
 	REPEAT_RAND = [1.0, 1.0]
 elif random == 1:
 	GAIN_RAND = [-3.0, +3.0]
-	SPEED_RAND = [0.95, 1.05]
+	SPEED_RAND = [0.95 , 1.05]
 	REPEAT_RAND = [1.0, 10.0]
 elif random == 2:
 	GAIN_RAND = [-6.0, +6.0]
-	SPEED_RAND = [0.85, 1.15]
-	REPEAT_RAND = [0.9, 30.0]
+	SPEED_RAND = [0.9, 1.10]
+	REPEAT_RAND = [0.8, 30.0]
 elif random == 3:
-	GAIN_RAND = [-10.0, +10.0]
-	SPEED_RAND = [0.8, 1.2]
-	REPEAT_RAND = [0.8, 50.0]
+	GAIN_RAND = [-10.0, +6.0]
+	SPEED_RAND = [0.85, 1.15]
+	REPEAT_RAND = [0.7, 40.0]
 
 
 
@@ -120,20 +121,21 @@ def get_duration(file):
 def modify(file):
 	mixedFile = AudioSegment.from_wav(file)
 	gRand, rRand, sRand = 0,1,1
-	if arguments.gain:
-		gRand = rand.uniform(GAIN_RAND[0], GAIN_RAND[1])
+	if arguments.speed and random != 0:
+		sRand = round(rand.uniform(SPEED_RAND[0], SPEED_RAND[1]),2)
+		mixedFile = mixedFile._spawn(mixedFile.raw_data, overrides={"frame_rate": int(mixedFile.frame_rate * sRand)})
+	if arguments.gain and random != 0:
+		gRand = round(rand.uniform(GAIN_RAND[0], GAIN_RAND[1]),2)
 		mixedFile += gRand
-	if arguments.repeat:
-		rRand = rand.uniform(REPEAT_RAND[0], REPEAT_RAND[1])
+	if arguments.repeat and random != 0:
+		rRand = round(rand.uniform(REPEAT_RAND[0], REPEAT_RAND[1]),2)
 		floorInt = math.floor(rRand)
 		left = rRand - floorInt
 		if floorInt != 0: 
 			mixedFile = mixedFile * floorInt + mixedFile[:math.ceil(left*get_duration(file)*1000)]
 		else:
 			mixedFile = mixedFile[:math.ceil(left*get_duration(file)*1000)]
-	if arguments.speed:
-		sRand = rand.uniform(SPEED_RAND[0], SPEED_RAND[1])
-		mixedFile = effects.speedup(seg=mixedFile, playback_speed=sRand)
+	
 	return file, mixedFile, mixedFile.duration_seconds ,gRand, rRand, sRand
 		# mixedFile.export(arguments.export + file.split('/')[-1], format="wav")
 
@@ -147,43 +149,54 @@ def get_type(file):
 	return fileType
 
 
-def make_filename(recordFile, )
+def make_filename(recordFile, messageFile, position):
+	filename = recordFile.split('/')[-1].split('.w')[0] + '__' + messageFile[0].split('/')[-1].split('.w')[0] + \
+		'_ST(' + "{:.2f}".format(position) + ')L(' + "{:.2f}".format(messageFile[2]) + ')G(' + \
+		"{:.2f}".format(messageFile[3]) + ')R(' + "{:.2f}".format(messageFile[4]) + \
+		')S(' + "{:.2f}".format(messageFile[5]) + ').wav'
+	return filename
 
 
 def mix():
 	msg = glob.glob(msgsrc + mode + '*.wav')
 	rec = glob.glob(recsrc + '*.wav')	
 	modifiedList = []
-	for file in msg:
-		modifiedList.append(modify(file))
+	# for file in msg:
+	# 	modifiedList.append(modify(file))
+	# 	print("Modifying:", file)
 	index = 0
+	current = 0
+	msgCount = len(msg)
+	recCount = len(rec)
 	for file in rec:
+		current += 1
+		# print("Modifying:", msg[index])
+		modified = modify(msg[index])
 		#filter out unwanted files
 		if arguments.lt and int(arguments.lt) > get_duration(file):
 			continue
 		if arguments.st and int(arguments.st) < get_duration(file):
 			continue
 		record = AudioSegment.from_wav(file)
-		if get_type(modifiedList[index][0]) == 'A':		#add to the beginning
-			record = modifiedList[index][1] + record 
+		if get_type(modified[0]) == 'A':		#add to the beginning
+			record = modified[1] + record 
 			position = 0
-		elif get_type(modifiedList[index][0]) == 'B':		#add somewhere in between
+		elif get_type(modified[0]) == 'B':		#add somewhere in between
 			randCut = math.ceil(rand.uniform(0.0, get_duration(file)))
-			record = record[:randCut*1000] + modifiedList[index][1] + record[randCut*1000:]
+			record = record[:randCut*1000] + modified[1] + record[randCut*1000:]
 			position = randCut
 		else:	#type 'C'	            #add at the end
-			record = record + modifiedList[index][1] 
+			record = record + modified[1] 
 			position = get_duration(file)
 
-		# print(file, modifiedList[index])
-		filename = file.split('/')[-1].split('.w')[0] + '__' + modifiedList[index][0].split('/')[-1].split('.w')[0] + \
-		'_ST(' + "{:.2f}".format(position) + ')L(' + "{:.2f}".format(modifiedList[index][2]) + ')G(' + \
-		"{:.2f}".format(modifiedList[index][3]) + ')R(' + "{:.2f}".format(modifiedList[index][4]) + \
-		')S(' + "{:.2f}".format(modifiedList[index][5]) + ').wav'
-		record.export(arguments.export + filename, format="wav")
 		# name it the right way and export
+		filename = make_filename(file, modified, position)
+
+		print("Exporting {}/{}: {}:".format(current, recCount, filename))
+		record.export(arguments.export + filename, format="wav")
+		
 		index += 1
-		if index == len(modifiedList):
+		if index == msgCount:
 			index = 0
 
 
