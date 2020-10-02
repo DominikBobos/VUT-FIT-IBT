@@ -12,7 +12,10 @@ import argparse, textwrap               # for parsing arguments
 import os, sys, glob, re                # for file path, finding files, etc
 import random as rand 	                # for random numbers generator
 import numpy
+from collections import Counter         # for statistics
 
+
+##TODO -make comments
 
 """''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Arguments parsing
@@ -22,12 +25,12 @@ parser.add_argument("-m", "--mode", help=textwrap.dedent("""Specifies which type
   Possible values are: A, B, C"""))
 parser.add_argument("-g", "--gain", action="store_true", help="Change volume gain of the pre-recorded message")                            
 parser.add_argument("-s", "--speed", action="store_true", help="Change speed of the pre-recorded message")                       
-parser.add_argument("--stats", action="store_true", 
-	help="show statistics about the files in either source or destination directory")
 parser.add_argument("-r", "--repeat", action="store_true", help="Cut or repeat the pre-recorded messages")    
-parser.add_argument("--mpath", help="Path to the directory with the pre-recorded messages")  
-parser.add_argument("--spath", help="Path to the directory with the speech .wav files")   
+parser.add_argument("--onlymodify", action="store_true", help="Just modify the operator message and export it")     
+parser.add_argument("--mpath", help="Path to the directory with the pre-recorded messages, --mpath=PATH")  
+parser.add_argument("--spath", help="Path to the directory with the speech .wav files, --spath=PATH")   
 parser.add_argument("--export", help="Path to the directory where to export the mixed audio files")
+parser.add_argument("--stats", action="store_true", help="show statistics about the wav files from the given directory from arg mpath=PATH")
 parser.add_argument("--lt", help="Will use longer recordings than specified in seconds")    # use audio longer than specified in seconds
 parser.add_argument("--st", help="Will use shorter recordings than specified in seconds")   # use audio shorter than specified in seconds
 parser.add_argument("--random", default=0, help="""Select severity of randomness
@@ -60,6 +63,8 @@ if arguments.random:
 	except:
 		sys.stderr.write("Invalid random value! Use help for more information\n")
 		sys.exit(1)
+else:
+	random = 0 
 
 if not arguments.mpath:
 	msgsrc = os.getcwd()
@@ -160,45 +165,113 @@ def make_filename(recordFile, messageFile, position):
 def mix():
 	msg = glob.glob(msgsrc + mode + '*.wav')
 	rec = glob.glob(recsrc + '*.wav')	
-	modifiedList = []
-	# for file in msg:
-	# 	modifiedList.append(modify(file))
-	# 	print("Modifying:", file)
 	index = 0
 	current = 0
 	msgCount = len(msg)
 	recCount = len(rec)
-	for file in rec:
-		current += 1
-		# print("Modifying:", msg[index])
-		modified = modify(msg[index])
-		#filter out unwanted files
+	if arguments.onlymodify:
+		for file in msg:
+			current += 1	
+			modified = modify(file)
+			filename = make_filename("path/sw00000-A_0_0.wav", modified, 0)
+			print("Exporting {}/{}: {}:".format(current, msgCount, filename))
+			modified[1].export(arguments.export + filename, format="wav")
+	else:
+		for file in rec:
+			current += 1
+			# print("Modifying:", msg[index])
+			modified = modify(msg[index])
+			#filter out unwanted files
+			if arguments.lt and int(arguments.lt) > get_duration(file):
+				continue
+			if arguments.st and int(arguments.st) < get_duration(file):
+				continue
+			record = AudioSegment.from_wav(file)
+			if get_type(modified[0]) == 'A':		#add to the beginning
+				record = modified[1] + record 
+				position = 0
+			elif get_type(modified[0]) == 'B':		#add somewhere in between
+				randCut = math.ceil(rand.uniform(0.0, get_duration(file)))
+				record = record[:randCut*1000] + modified[1] + record[randCut*1000:]
+				position = randCut
+			else:	#type 'C'	            #add at the end
+				record = record + modified[1] 
+				position = get_duration(file)
+
+			# name it the right way and export
+			filename = make_filename(file, modified, position)
+
+			print("Exporting {}/{}: {}:".format(current, recCount, filename))
+			record.export(arguments.export + filename, format="wav")
+			
+			index += 1
+			if index == msgCount:
+				index = 0
+
+
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Counts the total count of all files
+counts the total duration of all files
+orders and counts the occurrences of files
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
+def count(files):
+	statList = []
+	total, count, msgTotal, gainTotal, repeatTotal, speedTotal = 0, 0, 0, 0, 0, 0
+	for file in files:
 		if arguments.lt and int(arguments.lt) > get_duration(file):
 			continue
-		if arguments.st and int(arguments.st) < get_duration(file):
+		elif arguments.st and int(arguments.st) < get_duration(file):
 			continue
-		record = AudioSegment.from_wav(file)
-		if get_type(modified[0]) == 'A':		#add to the beginning
-			record = modified[1] + record 
-			position = 0
-		elif get_type(modified[0]) == 'B':		#add somewhere in between
-			randCut = math.ceil(rand.uniform(0.0, get_duration(file)))
-			record = record[:randCut*1000] + modified[1] + record[randCut*1000:]
-			position = randCut
-		else:	#type 'C'	            #add at the end
-			record = record + modified[1] 
-			position = get_duration(file)
-
-		# name it the right way and export
-		filename = make_filename(file, modified, position)
-
-		print("Exporting {}/{}: {}:".format(current, recCount, filename))
-		record.export(arguments.export + filename, format="wav")
-		
-		index += 1
-		if index == msgCount:
-			index = 0
+		else:
+			try:
+				msg = file.split('__')[1]
+				msgType, msgInfo = msg.split('_')
+				start, length, gain, repeat, speed, extension = msgInfo.split(')')
+			except:
+				pass
+			current = get_duration(file)
+			count += 1
+			total += current
+			msgTotal += float(length.split('(')[1])
+			gainTotal += float(gain.split('(')[1])
+			repeatTotal += float(repeat.split('(')[1])
+			speedTotal += float(speed.split('(')[1])
+			statList.append(msgType)
+	stat = Counter(statList)
+	return total, stat, count, msgTotal, gainTotal, repeatTotal, speedTotal
 
 
 
-mix()
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Shows statistics about audio files in a given directory
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
+def stats():
+	msg = glob.glob(msgsrc + mode + '*.wav')
+	if len(msg) != 0:
+		ret = count(msg)
+		srcTotal, srcStat, srcCount, msgStats = ret[0], ret[1], ret[2], ret[3:]
+		avgLength = msgStats[0] / srcCount
+		avgGain = msgStats[1] / srcCount
+		avgRepeat = msgStats[2] / srcCount
+		avgSpeed = msgStats[3] / srcCount
+		print("____________________________________________________________________________________")
+		print("\nTotal count of all recordings:  \t", srcCount)
+		print("Total length of records: \t", "{:.2f}".format(srcTotal), "[s] |", 
+			"{:.2f}".format(srcTotal/60), "[m] |", "{:.2f}".format(srcTotal/3600), "[h]")
+		print("Total length of the mixed pre-recorded messages: \t", "{:.2f}".format(msgStats[0]), "[s] |", 
+			"{:.2f}".format(msgStats[0]/60), "[m] |", "{:.2f}".format(msgStats[0]/3600), "[h]")
+		print("The Average length of the mixed pre-recorded messages: \t", "{:.2f}".format(avgLength), "[s]")
+		print("The Average gain: \t", "{:.2f}".format(avgGain), "[dB]")
+		print("The Average loop: \t", "{:.2f}".format(avgRepeat), "times") 
+		print("The Average speed: \t", "{:.2f}".format(avgSpeed), "to original \n") 
+		for item in srcStat.most_common():
+			print("Message type: \t", item[0], "  \t Count: ", item[1])
+		print("____________________________________________________________________________________\n")
+	else:
+		print("No statistics available.")
+
+
+if not arguments.stats:
+	mix()
+else:
+	stats()
