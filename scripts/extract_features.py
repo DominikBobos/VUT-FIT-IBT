@@ -11,31 +11,6 @@ from matplotlib import cm
 import librosa
 import librosa.display
 from dtw import accelerated_dtw
-# pip3 install python_speech_features
-
-
-# nahravka = sys.argv[1]		#zmente pre ziadany subor
-# #cesta = os.path.join(sentences, nahravka)
-# s, fs = sf.read(nahravka)
-# s = s[:250000]
-# t = np.arange(s.size) / fs
-
-
-#  #	segmenty o dlzke 25ms, prekrytie 15ms, 'N->512, lenze indexujeme od 0'
-
-# f, t, sgr = spectrogram(s, fs,'25' ,400, 240, 511)
-# sgr_log = 10 * np.log10(sgr+1e-20) 
-
-
-# fig = plt.figure(figsize=(9,3))
-# plt.pcolormesh(t,f,sgr_log)
-# plt.gca().set_xlabel('Čas [s]')
-# plt.gca().set_ylabel('Frekvencia [Hz]')
-# plt.title(nahravka)
-# ax1 = fig.add_subplot(111)
-# plt.tight_layout()
-# pocetvzoriek = sgr.shape
-# print(pocetvzoriek[1])
 
 
 # plt.show()
@@ -99,19 +74,24 @@ plt.show()
 
 
 
+# signal1, sample_f1 = librosa.load("../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav")
+# signal2, sample_f2 = librosa.load("../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav")
+
 
 sample_f1, signal1 = wavfile.read("../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav")
 sample_f2, signal2 = wavfile.read("../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav")
+# sample_f2, signal2 = wavfile.read("../mixed/sw03864-A_9_20__A02_ST(0.00)L(31.77)G(2.80)R(9.69)S(1.03).wav")
+# sample_f2, signal2 = wavfile.read("../mixed/sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav")
 
 mfcc1 = mfcc(signal1, sample_f1, 0.025, 0.01, 13, 512)
 mfcc2 = mfcc(signal2, sample_f2, 0.025, 0.01, 13, 512)
-print(sample_f1, sample_f2)
+# print(sample_f1, sample_f2)
 #Loading audio files
 # y1, sr1 = librosa.load(sys.argv[1]) 
 # y2, sr2 = librosa.load("../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav")
 
 
-fig = plt.figure(figsize=(4, 6))
+fig = plt.figure(figsize=(6, 6))
 # fig.suptitle("FILE: " + sys.argv[1].split('/')[-1], fontsize=12)
 ax = fig.add_subplot(1, 2, 1)
 # fig, ax = plt.subplots()
@@ -127,7 +107,7 @@ cax = ax.imshow(features_mfcc1, interpolation='nearest', cmap=cm.nipy_spectral, 
 
 ax = fig.add_subplot(1, 2, 2)
 ax.set_title('MFCC')
-ax.set_xlabel("window")
+ax.set_xlabel("Time [s]")
 ax.set_ylabel("MFCC")
 ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*0.01))
 ax.xaxis.set_major_formatter(ticks_x)
@@ -159,18 +139,72 @@ cax = ax.imshow(features_mfcc2, interpolation='nearest', cmap=cm.nipy_spectral, 
 
 # dist, cost_matrix, acc_cost_matrix, path  = accelerated_dtw(mfcc1.T, mfcc2.T,"canberra")
 dist, wp = librosa.sequence.dtw(X=mfcc1.T, Y=mfcc2.T, metric='cosine')
-print(mfcc1.shape[0]*(0.01))
-wp_s = np.asarray(wp) * mfcc2.shape[0]*(0.01)
-
+# wp_s = np.asarray(wp) * mfcc2.shape[0]*(0.01)
+print("Distance", dist[wp[-1, 0], wp[-1, 1]])
 # dist, cost_matrix, acc_cost_matrix, path  = accelerated_dtw(mfcc1.T, mfcc2.T,"canberra")
 
 fig = plt.figure(figsize=(6, 6))
 ax = fig.add_subplot(111)
-librosa.display.specshow(dist, x_axis='time', y_axis='time',
-                         cmap='gray_r', hop_length=mfcc2.shape[0]*(0.01))
-imax = ax.imshow(dist, cmap=plt.get_cmap('gray_r'),
-                 origin='lower', interpolation='nearest', aspect='auto')
-ax.plot(wp_s[:, 1], wp_s[:, 0], marker='o', color='r')
-plt.title('Warping Path on Acc. Cost Matrix $D$')
-plt.colorbar()
-plt.show() 
+# plt.subplot(2, 1, 1)
+ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*0.01))
+ax.xaxis.set_major_formatter(ticks_x)
+ticks_y = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*0.01))
+ax.yaxis.set_major_formatter(ticks_y)
+# librosa.display.specshow(dist)
+cax = ax.imshow(dist, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='auto')
+ax.set_xlabel("Time [s]")
+ax.set_ylabel("Time [s]")
+ax.set_title('DTW path alignment')
+ax.plot(wp[:, 1], wp[:, 0], label='Optimal path', color='r')
+ax.legend()
+
+# fig = plt.figure(figsize=(6, 6))
+# ax = fig.add_subplot(111)
+# librosa.display.specshow(dist, x_axis='time', y_axis='time',
+#                          cmap='gray_r', hop_length=mfcc2.shape[0])
+# imax = ax.imshow(dist, cmap=plt.get_cmap('gray_r'),
+#                  origin='lower', interpolation='nearest', aspect='auto')
+# ax.plot(wp_s[:, 1], wp_s[:, 0], marker='o', color='r')
+# plt.title('Warping Path on Acc. Cost Matrix $D$')
+# plt.colorbar()
+
+
+# fig = plt.figure(figsize=(16, 8))
+#
+# # Plot x_1
+# plt.subplot(2, 1, 1)
+# librosa.display.waveplot(signal1, sr=sample_f1)
+# plt.title('Slower Version $X_1$')
+# ax1 = plt.gca()
+#
+# # Plot x_2
+# plt.subplot(2, 1, 2)
+# librosa.display.waveplot(signal2, sr=sample_f2)
+# plt.title('Slower Version $X_2$')
+# ax2 = plt.gca()
+#
+# plt.tight_layout()
+#
+# trans_figure = fig.transFigure.inverted()
+# lines = []
+# arrows = 30
+# points_idx = np.int16(np.round(np.linspace(0, wp.shape[0] - 1, arrows)))
+#
+# # for tp1, tp2 in zip((wp[points_idx, 0]) * hop_size, (wp[points_idx, 1]) * hop_size):
+# for tp1, tp2 in wp[points_idx]:
+#     # get position on axis for a given index-pair
+#     coord1 = trans_figure.transform(ax1.transData.transform([tp1, 0]))
+#     coord2 = trans_figure.transform(ax2.transData.transform([tp2, 0]))
+#
+#     # draw a line
+#     line = matplotlib.lines.Line2D((coord1[0], coord2[0]),
+#                                    (coord1[1], coord2[1]),
+#                                    transform=fig.transFigure,
+#                                    color='r')
+#     lines.append(line)
+#
+# fig.lines = lines
+# plt.tight_layout()
+
+
+plt.show()
