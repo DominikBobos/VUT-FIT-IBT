@@ -10,6 +10,7 @@ import math                             # for rounding numbers
 import argparse                         # for parsing arguments
 import os, sys, glob                    # for file path, finding files, etc
 from collections import Counter         # for statistics
+import shutil                           # for copying files
 
 #ffmpeg needed just mark it somewhere
 
@@ -25,10 +26,13 @@ parser.add_argument("--stats", action="store_true",
     help="show statistics about the wav files in either source or destination directory")
 parser.add_argument("--lt", help="Will cut longer recordings than specified in seconds")    # shows/splits audio longer than specified in seconds
 parser.add_argument("--st", help="Will cut shorter recordings than specified in seconds")   # shows/splits audio shorter than specified in seconds
-parser.add_argument("--rm", action="store_true", help="Will remove the original file after splitting it")   
+parser.add_argument("--rm", action="store_true", help="Will remove the original file after splitting it")  
+parser.add_argument("--copy", action="store_true", help="Copy files to the specified folder")
+parser.add_argument("--move", action="store_true", help="Move files to the specified folder") 
+parser.add_argument("--count", help="How many files you want to move or copy")
 arguments = parser.parse_args()
 
-if not arguments.sec and not arguments.stats:
+if not arguments.sec and not arguments.stats and not arguments.copy and not arguments.move:
     sys.stderr.write("Please specify the duration in seconds of the wanted cut length using --sec=NUMBER .\n")
     sys.exit(1)
 if arguments.sec:
@@ -56,11 +60,11 @@ else:
 
 
 
-"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Loads audio files from source directory 
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
-def get_audio_file(file):
-    return [load(f) for f in glob.glob(file)]
+# """''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+# Loads audio files from source directory 
+# ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
+# def get_audio_file(file):
+#     return [load(f) for f in glob.glob(file)]
 
 
 
@@ -181,7 +185,40 @@ def stats():
     if len(srcFiles) == 0 and len(dstFiles) == 0:
         print("No statistics available.")
 
-if not arguments.stats:
+
+
+"""''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Copies or moves files from src to dst
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
+def move_copy():
+    srcFiles = glob.glob(src+'*.wav')
+    i = 0
+    for file in srcFiles:
+        #filter out unwanted files
+        if arguments.count and int(arguments.count) == i:
+            break
+        if arguments.lt and int(arguments.lt) > get_duration(file):
+            continue
+        if arguments.st and int(arguments.st) < get_duration(file):
+            continue
+        if arguments.copy:
+            shutil.copy2(file, dst) 
+            print('Copying file: ', file, "to: ", dst)
+            if arguments.rm:
+                print('Removing file: ', file)
+                os.remove(file)
+        if arguments.move:
+            shutil.move(file, dst)
+            print('Moving file: ', file, "to: ", dst)
+        i +=1
+        
+
+
+
+
+if arguments.move or arguments.copy:
+    move_copy()
+elif not arguments.stats:
     multiple_split(splitSec)
-if arguments.stats:
+elif arguments.stats:
     stats()
