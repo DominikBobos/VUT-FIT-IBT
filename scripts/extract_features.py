@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-import matplotlib
 # import soundfile as sf
 from scipy.io import wavfile
 # from scipy.signal import spectrogram, lfilter, freqz, tf2zpk
@@ -11,13 +10,52 @@ from matplotlib import cm
 import librosa
 import librosa.display
 from dtw import accelerated_dtw
+from scipy.spatial.distance import cdist
+
+
+def my_dtw(o, r):
+    cost_matrix = cdist(o, r, metric='seuclidean')
+    m, n = np.shape(cost_matrix)
+
+    for i in range(m):
+        for j in range(n):
+            if ((i == 0) & (j == 0)):
+                cost_matrix[i, j] = cost_matrix[i, j]  # inf
+            elif (i == 0):
+                cost_matrix[i, j] = cost_matrix[i, j] + cost_matrix[i, j - 1]  # inf
+            elif (j == 0):
+                cost_matrix[i, j] = cost_matrix[i, j] + cost_matrix[i - 1, j]  # inf
+            else:
+                min_local_dist = np.min([cost_matrix[i - 1, j], cost_matrix[i, j - 1], cost_matrix[i - 1, j - 1]])
+                cost_matrix[i, j] = cost_matrix[i, j] + min_local_dist
+    # backtracking
+    path = [m - 1], [n - 1]
+    i, j = m - 1, n - 1
+    while (True):
+        backtrack = np.argmin([cost_matrix[i - 1, j - 1], cost_matrix[i - 1, j], cost_matrix[i, j - 1]])
+        if backtrack == 1:
+            path[0].append(i - 1)
+            path[1].append(j)
+            i -= 1
+        elif backtrack == 2:
+            path[0].append(i)
+            path[1].append(j - 1)
+            j -= 1
+        else:
+            path[0].append(i - 1)
+            path[1].append(j - 1)
+            i -= 1
+            j -= 1
+        if i == 0 and j == 0:
+            break
+    np_path = np.array(path, dtype=np.int)
+    return cost_matrix, cost_matrix[-1, -1] / (cost_matrix.shape[0] + cost_matrix.shape[1]), np_path.T
 
 
 # plt.show()
 
 
-#EXTRACTING FEATUES
-
+# EXTRACTING FEATUES
 
 
 # frequency_sampling, audio_signal = wavfile.read(sys.argv[1])
@@ -72,12 +110,6 @@ cax = ax.imshow(filterbank_features, interpolation='nearest', cmap=cm.nipy_spect
 plt.show()
 """
 
-
-
-# signal1, sample_f1 = librosa.load("../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav")
-# signal2, sample_f2 = librosa.load("../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav")
-
-
 sample_f1, signal1 = wavfile.read("../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav")
 sample_f2, signal2 = wavfile.read("../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav")
 # sample_f2, signal2 = wavfile.read("../mixed/sw03864-A_9_20__A02_ST(0.00)L(31.77)G(2.80)R(9.69)S(1.03).wav")
@@ -86,34 +118,51 @@ sample_f2, signal2 = wavfile.read("../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G
 mfcc1 = mfcc(signal1, sample_f1, 0.025, 0.01, 13, 512)
 mfcc2 = mfcc(signal2, sample_f2, 0.025, 0.01, 13, 512)
 # print(sample_f1, sample_f2)
-#Loading audio files
+# Loading audio files
 # y1, sr1 = librosa.load(sys.argv[1]) 
 # y2, sr2 = librosa.load("../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav")
 
 
-fig = plt.figure(figsize=(6, 6))
+# from HTK import HTKFile
+
+
+# htk_reader_1 = HTKFile()
+# htk_reader_1.load("/home/dominik/Desktop/bak/short1.lin")
+# print(htk_reader_1.nSamples, htk_reader_1.nFeatures, htk_reader_1.sampPeriod, htk_reader_1.qualifiers)
+# mfcc1 = np.array(htk_reader_1.data)
+# print(mfcc1.T.shape, mfcc1)
+
+# htk_reader_2 = HTKFile()
+# htk_reader_2.load("/home/dominik/Desktop/bak/short2.lin")
+# print(htk_reader_2.nSamples, htk_reader_2.nFeatures, htk_reader_2.sampPeriod, htk_reader_2.qualifiers)
+# mfcc2 = np.array(htk_reader_2.data)
+# print(mfcc2.T.shape, mfcc2)
+
+
+
+fig = plt.figure(figsize=(8, 6))
 # fig.suptitle("FILE: " + sys.argv[1].split('/')[-1], fontsize=12)
 ax = fig.add_subplot(1, 2, 1)
 # fig, ax = plt.subplots()
-ax.set_title('MFCC')
+ax.set_title('File 1')
 ax.set_xlabel("Time [s]")
 ax.set_ylabel("MFCC")
-ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*0.01))
+
+ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * 0.01))
 ax.xaxis.set_major_formatter(ticks_x)
 # ax.xaxis.set_ticks(np.arange(0,mfcc1.shape[0],1))
-features_mfcc1 = np.swapaxes(mfcc1, 0 ,1)
-cax = ax.imshow(features_mfcc1, interpolation='nearest', cmap=cm.nipy_spectral, origin='lower', aspect='auto')
-
+features_mfcc1 = np.swapaxes(mfcc1, 0, 1)
+cax = ax.imshow(features_mfcc1, interpolation='nearest', cmap=cm.nipy_spectral, origin='lower', aspect='auto',
+                label="energy")
 
 ax = fig.add_subplot(1, 2, 2)
-ax.set_title('MFCC')
+ax.set_title('File 2')
 ax.set_xlabel("Time [s]")
 ax.set_ylabel("MFCC")
-ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*0.01))
+ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * 0.01))
 ax.xaxis.set_major_formatter(ticks_x)
-features_mfcc2 = np.swapaxes(mfcc2, 0 ,1)
+features_mfcc2 = np.swapaxes(mfcc2, 0, 1)
 cax = ax.imshow(features_mfcc2, interpolation='nearest', cmap=cm.nipy_spectral, origin='lower', aspect='auto')
-
 
 # #Showing multiple plots using subplot
 # plt.subplot(1, 2, 1)
@@ -137,25 +186,44 @@ cax = ax.imshow(features_mfcc2, interpolation='nearest', cmap=cm.nipy_spectral, 
 
 # plt.show()  #To display the plots graphically
 
+
+
+
 # dist, cost_matrix, acc_cost_matrix, path  = accelerated_dtw(mfcc1.T, mfcc2.T,"canberra")
-dist, wp = librosa.sequence.dtw(X=mfcc1.T, Y=mfcc2.T, metric='cosine')
-# wp_s = np.asarray(wp) * mfcc2.shape[0]*(0.01)
+dist, wp = librosa.sequence.dtw(X=mfcc1.T, Y=mfcc2.T, metric='seuclidean')
+test = my_dtw(mfcc1, mfcc2)
+print("My distance", test[1])
 print("Distance", dist[wp[-1, 0], wp[-1, 1]])
 # dist, cost_matrix, acc_cost_matrix, path  = accelerated_dtw(mfcc1.T, mfcc2.T,"canberra")
 
 fig = plt.figure(figsize=(6, 6))
-ax = fig.add_subplot(111)
+ax = fig.add_subplot(2,1,1)
 # plt.subplot(2, 1, 1)
-ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*0.01))
+ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * 0.01))
 ax.xaxis.set_major_formatter(ticks_x)
-ticks_y = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*0.01))
+ticks_y = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y * 0.01))
 ax.yaxis.set_major_formatter(ticks_y)
 # librosa.display.specshow(dist)
 cax = ax.imshow(dist, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='auto')
-ax.set_xlabel("Time [s]")
-ax.set_ylabel("Time [s]")
-ax.set_title('DTW path alignment')
+ax.set_xlabel("File 2 Time [s]")
+ax.set_ylabel("File 1 Time [s]")
+ax.set_title('Librosa DTW alignment path')
 ax.plot(wp[:, 1], wp[:, 0], label='Optimal path', color='r')
+ax.legend()
+
+
+ax = fig.add_subplot(2,1,2)
+# plt.subplot(2, 1, 1)
+ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * 0.01))
+ax.xaxis.set_major_formatter(ticks_x)
+ticks_y = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y * 0.01))
+ax.yaxis.set_major_formatter(ticks_y)
+# librosa.display.specshow(dist)
+cax = ax.imshow(test[0], interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='auto')
+ax.set_xlabel("File 2 Time [s]")
+ax.set_ylabel("File 1 Time [s]")
+ax.set_title('My DTW alignment path')
+ax.plot(test[2][:, 1], test[2][:, 0], label='Optimal path', color='r')
 ax.legend()
 
 # fig = plt.figure(figsize=(6, 6))
@@ -206,5 +274,5 @@ ax.legend()
 # fig.lines = lines
 # plt.tight_layout()
 
-
+plt.tight_layout()
 plt.show()
