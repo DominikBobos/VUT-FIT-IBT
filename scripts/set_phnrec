@@ -1,0 +1,10 @@
+#!/bin/bash
+
+phnrecdir=/etc/PhnRec
+
+
+echo PhnRec directory set to: $phnrecdir
+
+alias phnrec=$phnrecdir/phnrec
+echo alias phnrec set to $phnrecdir/phnrec
+# https://speech.fit.vutbr.cz/software/phoneme-recognizer-based-long-temporal-context
