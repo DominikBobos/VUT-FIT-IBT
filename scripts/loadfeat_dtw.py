@@ -179,6 +179,55 @@ def plot(feature1=None, feature2=None, dist=None, wp=None, sim_list=None, dtw_na
 		pass
 
 
+def plot_phn_audio(phn_posteriors=None, file=None ,info=[]):
+	feat_name = 'Features'
+	filename = ''
+	if info != []:
+		tick = info[0][-1] / phn_posteriors.shape[0] 
+		if info[0][-2] == "lin":
+			feat_name = 'Phoneme posteriors'
+		else:
+			feat_name = 'MFCC'
+		if len(info[0]) < 11:
+			filename = info[0][0]
+		else:
+			filename = info[0][0] + ' ' + info[0][3]
+	else:
+		tick = 0.01	
+
+	if phn_posteriors is not None:
+		fig, (ax, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [4, 1]})
+		# fig = plt.figure(figsize=(8, 6))
+		# ax = fig.add_subplot(2, 1, 1)
+		ax.set_title('File 1: {}, repeat: {} times,'.format(filename, info[0][7]))
+		ax.set_xlabel("Time [s]")
+		ax.set_ylabel(feat_name)
+		ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * tick))
+		ax.xaxis.set_major_formatter(ticks_x)
+		ax.tick_params(axis='x', rotation=20)
+		if (phn_posteriors.shape[1] == 46):
+			ax.yaxis.set_major_locator(plt.MaxNLocator(46))
+			ax.yaxis.set_major_formatter(ticker.IndexFormatter(phn_labels))
+			# labels = [item.get_text() for item in ax.get_yticklabels()]
+			# labels[1] = 'Testing'
+			# ax.set_yticklabels(labels)
+			# plt.yticks(np.arange(len(phn_labels)), phn_labels)
+		features_mfcc1 = np.swapaxes(phn_posteriors, 0, 1)
+		cax = ax.imshow(features_mfcc1, interpolation='nearest', cmap=cm.nipy_spectral, origin='lower', aspect='auto')
+		# ax2 = fig.add_subplot(2, 1, 2)
+		spf = wave.open(file.replace("lin", "wav"), "r")
+		# Extract Raw Audio from Wav File
+		signal = spf.readframes(-1)
+		signal = np.frombuffer(signal, dtype='int16')
+		fs = spf.getframerate()
+		time = np.linspace(0, len(signal) / fs, num=len(signal))
+		# ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * tick/100))
+		# ax2.xaxis.set_major_formatter(ticks_x)
+		# ax2.tick_params(axis='x', rotation=20)
+		ax2.plot(time, signal)
+		plt.axis(xmin=0,xmax=time[-1])
+
+
 def similarity(wp):
 	sim_list = []
 	tmp_list = []
@@ -302,7 +351,8 @@ def parse(filename):
 	parsed_file.append(float(temp[5].split(')')[0]))	# speed
 	parsed_file.append(temp[5].split('.')[-1])			# extension format (wav, lin etc.)
 	parsed_file.append(parsed_file[2] + parsed_file[5])	# total duration of mixed file
-	return parsed_file									
+	# [sampleID, cutPart, sampleDuration, messageID, messStart, messDuration, volume, repeat, speed, extension, totalDuration]
+	return parsed_file	  								
 
 # file1 = "/home/dominik/Desktop/bak/short1.lin"
 # file2 = "/home/dominik/Desktop/bak/short2.lin"
@@ -312,10 +362,11 @@ def parse(filename):
 
 file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
 file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
-# file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
-# file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
-file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
-file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
+file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
+file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
+# file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
+# file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
+# file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 
 # file1 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
 # file2 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
@@ -350,8 +401,9 @@ print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
 sim_list1 = similarity(wp1)
 # sim_list2 = similarity(wp2)
 
-plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[parsed1, parsed2])
+# plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[parsed1, parsed2])
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My")
+plot_phn_audio(feature2, file=file2, info=[parsed2])
 
 plt.show()
 
