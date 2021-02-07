@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from scipy.io import wavfile
+from scipy import ndimage
 from python_speech_features import mfcc, logfbank
 import sys
 from matplotlib import cm
@@ -19,6 +20,72 @@ phn_labels = ['a', 'a:', 'au', 'b', 'c', 'd', 'dZ', 'dz', 'e', 'e:',
 				'ts', 'u', 'u:', 'v', 'x', 'Z', 'z', 'oth']
 
 
+mat10x10 = np.array([[-9, -8, -7, -6, -5, -4, -3, -2, -1, 0], 
+					[-8, -7, -6, -5, -4, -3, -2, -1, 0, 1], 
+					[-7, -6, -5, -4, -3, -2, -1, 0, 1, 2],
+					[-6, -5, -4, -3, -2, -1, 0, 1, 2, 3],
+					[-5, -4, -3, -2, -1, 0, 1, 2, 3, 4],
+					[-4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
+					[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6],
+					[-2, -1, 0, 1, 2, 3, 4, 5, 6, 7],
+					[-1, 0, 1, 2, 3, 4, 5, 6, 7, 8],
+					[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
+
+mat10x10N = np.array([[-9, 8, 7, 6, 5, 4, 3, 2, 1, 0], 
+					[8, 7, 6, 5, 4, 3, 2, 1, 0, -1], 
+					[7, 6, 5, 4, 3, 2, 1, 0, -1, -2],
+					[6, 5, 4, 3, 2, 1, 0, -1, -2, -3],
+					[5, 4, 3, 2, 1, 0, -1, -2, -3, -4],
+					[4, 3, 2, 1, 0, -1, -2, -3, -4, -5],
+					[3, 2, 1, 0, -1, -2, -3, -4, -5, -6],
+					[2, 1, 0, -1, -2, -3, -4, -5, -6, -7],
+					[1, 0, -1, -2, -3, -4, -5, -6, -7, -8],
+					[0, -1, -2, -3, -4, -5, -6, -7, -8, -9]])
+
+
+mat10x10T = np.array([[0, -1, -2, -3, -4, -5, -6, -7, -8, -9],
+						[1, 0, -1, -2, -3, -4, -5, -6, -7, -8],
+						[2, 1, 0, -1, -2, -3, -4, -5, -6, -7],
+						[3, 2, 1, 0, -1, -2, -3, -4, -5, -6],
+						[4, 3, 2, 1, 0, -1, -2, -3, -4, -5],
+						[5, 4, 3, 2, 1, 0, -1, -2, -3, -4],
+						[6, 5, 4, 3, 2, 1, 0, -1, -2, -3],
+						[7, 6, 5, 4, 3, 2, 1, 0, -1, -2],
+						[8, 7, 6, 5, 4, 3, 2, 1, 0, -1],
+						[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]]) 
+
+
+diag_matrix= np.zeros((100, 100), np.int)
+# np.fill_diagonal(np.fliplr(a), 1)  # flip
+np.fill_diagonal(diag_matrix, 1)  
+
+
+mat5x5 = np.array([	[4, 3, 2, 1, 0], 
+					[3, 2, 1, 0, -1], 
+					[2, 1, 0, -1, -2],
+					[1, 0, -1, -2, -3],
+					[0, -1, -2, -3, -4]])
+
+
+mat5x5N = np.array([[-4, -3, -2, -1, 0], 
+					[-3, -2, -1, 0, 1], 
+					[-2, -1, 0, 1, 2],
+					[-1, 0, 1, 2, 3],
+					[0, 1, 2, 3, 4]])
+
+mat3x3 = np.array([	[2, 1, 0], 
+					[1, 0, -1], 
+					[0, -1, -2]])
+
+mat3x3N = np.array([[-2, -1, 0], 
+					[-1, 0, 1], 
+					[0, 1, 2]])
+
+mat3x3T = np.array([[0, -1, -2], 
+					[1, 0, -1], 
+					[2, 1, 0]])
+
+
 def my_dtw(o, r):
 	cost_matrix = cdist(o, r, metric='euclidean')
 	m, n = np.shape(cost_matrix)
@@ -34,7 +101,7 @@ def my_dtw(o, r):
 			else:
 				min_cost = np.min([cost_matrix[i, j] + cost_matrix[i - 1, j],
 							cost_matrix[i, j] + cost_matrix[i, j - 1],
-							cost_matrix[i, j]*2 + cost_matrix[i - 1, j - 1]])
+							cost_matrix[i, j]*np.sqrt(2) + cost_matrix[i - 1, j - 1]])
 				cost_matrix[i, j] = min_cost
 	# backtracking
 	path = [m - 1], [n - 1]
@@ -92,7 +159,7 @@ def get_MFCC(file1, file2):
 	return mfcc1, mfcc2
 
 
-def plot(feature1=None, feature2=None, dist=None, wp=None, sim_list=None, dtw_name="", info=[]):
+def plot(feature1=None, feature2=None, dist=None, wp=None, sim_list=None, dtw_name="", info=[], gram_matrix=None):
 	feat_name = 'Features'
 	filename1 = ''
 	filename2 = ''
@@ -159,8 +226,12 @@ def plot(feature1=None, feature2=None, dist=None, wp=None, sim_list=None, dtw_na
 		ticks_y = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y * tick1))
 		ax.yaxis.set_major_formatter(ticks_y)
 		ax.tick_params(axis='x', rotation=20)
-		cax = ax.imshow(dist, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
-		fig.colorbar(cax, ax=ax, label="distance cost")
+		if gram_matrix is not None:
+			cax = ax.imshow(gram_matrix, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
+			fig.colorbar(cax, ax=ax, label="Gram matrix values")
+		else:
+			cax = ax.imshow(dist, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
+			fig.colorbar(cax, ax=ax, label="distance cost")
 		ax.set_xlabel("File 2 Time [s]")
 		ax.set_ylabel("File 1 Time [s]")
 		fig.suptitle(dtw_name + ' DTW alignment path')
@@ -352,7 +423,21 @@ def parse(filename):
 	parsed_file.append(temp[5].split('.')[-1])			# extension format (wav, lin etc.)
 	parsed_file.append(parsed_file[2] + parsed_file[5])	# total duration of mixed file
 	# [sampleID, cutPart, sampleDuration, messageID, messStart, messDuration, volume, repeat, speed, extension, totalDuration]
-	return parsed_file	  								
+	return parsed_file	  	
+
+
+def gram_matrix(feature):
+	matrix = feature.dot(feature.T)#(feature.dot(feature.T)) / (np.linalg.norm(feature) * np.linalg.norm(feature.T))			
+	return 0.5 * (matrix + 1)	
+
+
+def image_filter(matrix, threshold=0.7, percentile=70, variance=5):
+	matrix[matrix < threshold] = 0.0
+	matrix[matrix >= threshold] = 1.0
+	matrix = ndimage.percentile_filter(matrix, percentile=percentile, footprint=diag_matrix, mode='constant', cval=0.0)
+	matrix = ndimage.gaussian_filter(matrix, variance)
+	return matrix
+
 
 # file1 = "/home/dominik/Desktop/bak/short1.lin"
 # file2 = "/home/dominik/Desktop/bak/short2.lin"
@@ -361,14 +446,18 @@ def parse(filename):
 # file2 = '../../../sw02220-A_0_180__A02_ST(0.00)L(46.49)G(1.74)R(13.53)S(0.98).lin'
 
 file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
-file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
-file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
-file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
+file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
+# file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
+# file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
+# file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
 # file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
 # file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
+# file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
+
 
 # file1 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
+# file2 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
 # file2 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
 # file2 = "../../../mixed/sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).wav" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../../mixed/sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).wav"	#with seuclidean metrics it makes similarities hits!
@@ -401,12 +490,16 @@ print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
 sim_list1 = similarity(wp1)
 # sim_list2 = similarity(wp2)
 
-# plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[parsed1, parsed2])
-# plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My")
-plot_phn_audio(feature2, file=file2, info=[parsed2])
+
+# gram_matrix = gram_matrix(feature1)
+# gram_matrix = image_filter(gram_matrix)
+gram_matrix = None
+
+plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[parsed1, parsed2], gram_matrix=gram_matrix)
+# plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
+# plot_phn_audio(feature2, file=file2, info=[parsed2])
 
 plt.show()
-
 
 
 
