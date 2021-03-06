@@ -13,6 +13,7 @@ import os, sys, glob, re                # for file path, finding files, etc
 import random as rand 	                # for random numbers generator
 import numpy
 from collections import Counter         # for statistics
+from subprocess import call
 
 
 ##TODO -make comments
@@ -175,7 +176,13 @@ def mix():
 			modified = modify(file)
 			filename = make_filename("path/sw00000-A_0_0.wav", modified, 0)
 			print("Exporting {}/{}: {}:".format(current, msgCount, filename))
-			modified[1].export(arguments.export + filename, format="wav")
+			modified[1].export(arguments.export + filename + "raw", format="wav")
+			# sampling frequency could change from 8kHz, thus it is changed to 8kHz without changing the speed
+			fs=8000
+			speed = "{:.2f}".format(modified[5])
+			call('ffmpeg -i {} -af "asetrate={},atempo={}" {}'.format(
+				arguments.export + filename + 'raw.wav', fs, speed, arguments.export + filename + '.wav'), shell=True) 
+			os.remove(arguments.export + filename + 'raw.wav')
 	else:
 		for file in rec:
 			current += 1
@@ -203,7 +210,13 @@ def mix():
 
 			print("Exporting {}/{}: {}:".format(current, recCount, filename))
 			record.export(arguments.export + filename, format="wav")
-			
+			# sampling frequency could change from 8kHz, thus it is changed to 8kHz without changing the speed
+			fs=8000
+			speed = "{:.2f}".format(modified[5])
+			call('ffmpeg -i {} -af "asetrate={},atempo={}" {}'.format(
+				arguments.export + filename + 'raw.wav', fs, speed, arguments.export + filename + '.wav'), shell=True) 
+			os.remove(arguments.export + filename + 'raw.wav')
+
 			index += 1
 			if index == msgCount:
 				index = 0

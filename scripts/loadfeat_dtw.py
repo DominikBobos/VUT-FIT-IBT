@@ -429,6 +429,7 @@ def parse(filename):
 def gram_matrix(feature):
 	matrix = feature.dot(feature.T)#(feature.dot(feature.T)) / (np.linalg.norm(feature) * np.linalg.norm(feature.T))			
 	return 0.5 * (matrix + 1)	
+	# return feature
 
 
 def image_filter(matrix, threshold=0.7, percentile=70, variance=5):
@@ -458,11 +459,14 @@ file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
 
 # file1 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
 # file2 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
+# file1 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
 # file2 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
 # file2 = "../../../mixed/sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).wav" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../../mixed/sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).wav"	#with seuclidean metrics it makes similarities hits!
 # file2 = "../../../mixed/sw03864-A_9_20__A02_ST(0.00)L(31.77)G(2.80)R(9.69)S(1.03).wav"
+# file1 = "../../../mixed/sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
 # file2 = "../../../mixed/sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
+
 
 
 parsed1 = parse(file1)
@@ -491,9 +495,9 @@ sim_list1 = similarity(wp1)
 # sim_list2 = similarity(wp2)
 
 
-# gram_matrix = gram_matrix(feature1)
-# gram_matrix = image_filter(gram_matrix)
-gram_matrix = None
+gram_matrix = gram_matrix(feature1)
+gram_matrix = image_filter(gram_matrix)
+# gram_matrix = None
 
 plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[parsed1, parsed2], gram_matrix=gram_matrix)
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
