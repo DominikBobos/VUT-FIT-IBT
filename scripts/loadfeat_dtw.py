@@ -330,7 +330,6 @@ def similarity(wp):
 				len(tmp_list)/false_trend > 5) or \
 				false_trend == 0:
 				sim_list.append(np.array(tmp_list))
-
 			tmp_list = []
 			false_trend = 0
 			constant_false = 0
@@ -340,6 +339,104 @@ def similarity(wp):
 	for i in range(len(sim_list)-1,-1,-1):
 		if len(sim_list[i]) < 100:
 			sim_list.pop(i)
+	sim_list = np.array(sim_list, dtype=object)
+	return sim_list
+
+
+def similarity_new(wp, interval=[0.85, 1.15]):
+	sim_list = []
+	tmp_list = []
+	good_trend = 0
+	false_trend = 0
+	constant_false = 0
+	RIGHT = 0
+	UP = 1
+	DIAG = 2
+	direction = -1	 # unknown at first
+	prev_direction = -1
+	prev_point = None
+	for point in np.flip(wp,0):
+		if prev_point is None:
+			prev_point = point
+			continue
+		# going RIGHT ->	
+		if prev_point[0] == point[0] and prev_point[1] < point[1]:
+			direction = RIGHT
+		# going UP ^
+		elif prev_point[0] < point[0] and prev_point[1] == point[1]:
+			direction = UP
+		# going DIAG ⟋`
+		else:
+			direction = DIAG
+		# print("PREVIOUS DIRECTION:", prev_direction, "	DIRECTION:", direction)
+		if tmp_list != []:
+			if (direction == RIGHT and prev_direction == UP) or (direction == UP and prev_direction == RIGHT):
+				constant_false = 0
+				# false_trend += 1
+			elif (direction == RIGHT and prev_direction == RIGHT) or (direction == UP and prev_direction == UP):
+				# good_trend -= 1
+				false_trend += 1
+				constant_false += 1
+			elif (direction == DIAG):
+				good_trend += 1
+				constant_false = 0
+			else: 
+				constant_false = 0
+			tmp_list.append(point)
+
+		# print("GT:", good_trend, "FT:", false_trend, "CF:", constant_false)
+		# print(tmp_list)
+		if tmp_list == [] and direction == DIAG:
+			if prev_direction == -1 or (prev_direction == DIAG and good_trend >= 5):
+				tmp_list.append(point)
+			good_trend +=1
+			false_trend = 0
+			constant_false = 0
+		if constant_false >= 25:
+			del tmp_list[-1]  	
+			false_trend -= 1
+			for i in range(constant_false):
+				if len(tmp_list) > 0: 
+					del tmp_list[-1]  
+					false_trend -= 1
+			if len(tmp_list) >= 150:		     
+				ratio = (tmp_list[-1][0] - tmp_list[0][0]) / (tmp_list[-1][1] - tmp_list[0][1])
+				ratio_half1 = (tmp_list[-1][0] - tmp_list[len(tmp_list)//2][0]) / (tmp_list[-1][1] - tmp_list[len(tmp_list)//2][1])
+				ratio_half2 = (tmp_list[len(tmp_list)//2][0] - tmp_list[0][0]) / (tmp_list[len(tmp_list)//2][1] - tmp_list[0][1])
+				ratio_third1 = (tmp_list[-1][0] - tmp_list[len(tmp_list)//3*2][0]) / (tmp_list[-1][1] - tmp_list[len(tmp_list)//3*2][1])
+				ratio_third2 = (tmp_list[len(tmp_list)//3*2][0] - tmp_list[len(tmp_list)//3][0]) / (tmp_list[len(tmp_list)//3*2][1] - tmp_list[len(tmp_list)//3][1])
+				ratio_third3 = (tmp_list[len(tmp_list)//3][0] - tmp_list[0][0]) / (tmp_list[len(tmp_list)//3][1] - tmp_list[0][1])
+				# if interval[0] < ratio < interval[1] and \
+				# 	interval[0] < ratio1 < interval[1] and \
+				# 	interval[0] < ratio2 < interval[1]:
+				if interval[0] < ratio < interval[1]:
+					if (len(tmp_list) / false_trend > 2.3):
+						print("I have constant for ft bigger than 2.3")
+					print("Constant:", len(tmp_list)/false_trend )
+					# if 1.0 < good_trend/false_trend:
+					sim_list.append(np.array(tmp_list))
+				print("ratio:", ratio, "ratio1/2:",ratio_half2, "ratio2/2:",ratio_half1)
+				print("ratio:", ratio, "ratio1/3:", ratio_third3, "ratio2/3:", ratio_third2, "ratio3/3:",ratio_third1)
+			constant_false = 0
+			false_trend = 0
+			good_trend = 0
+			tmp_list = []
+		prev_point = point
+		prev_direction = direction
+
+	if len(tmp_list) >= 150:
+		del tmp_list[-1]  	
+		false_trend -= 1
+		for i in range(constant_false):
+			if len(tmp_list) > 0: 
+				del tmp_list[-1]  
+				false_trend -= 1
+		ratio = (tmp_list[-1][0] - tmp_list[0][0]) / (tmp_list[-1][1] - tmp_list[0][1])
+		print(ratio)
+		if interval[0] < ratio < interval[1]:
+			if (len(tmp_list)/false_trend > 5):
+				print("I have constant for ft bigger than 5")
+			sim_list.append(np.array(tmp_list))
 	sim_list = np.array(sim_list, dtype=object)
 	return sim_list
 
@@ -406,9 +503,10 @@ def parse(filename):
 	parsed_file.append(int(temp[1]))  # part of cut sample
 	# <20 -> sample without message 
 	if len(del_path) < 20:
-		parsed_file.append(float(temp[2].split('.')[0]))	# sample duration in seconds
-		parsed_file.append(temp[2].split('.')[-1])		# extension format (wav, lin etc.)
-		parsed_file.append(temp[2])	# total duration
+		parsed_file.append(float(temp[2][:-4]))			# sample duration in seconds
+		parsed_file.append(temp[2][-3:])		# extension format (wav, lin etc.)
+		parsed_file.append(float(temp[2][:-4]))	# total duration
+		print(parsed_file)
 		return parsed_file
 	else:
 		parsed_file.append(float(temp[2]))  # sample duration in seconds
@@ -448,24 +546,25 @@ def image_filter(matrix, threshold=0.7, percentile=70, variance=5):
 
 file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
 file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
-# file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
+file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
 # file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
-# file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
+file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
 # file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 # file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 
 
-# file1 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
-# file2 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
-# file1 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
-# file2 = "../../../mixed/sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
-# file2 = "../../../mixed/sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).wav" #with seuclidean metrics it makes similarities hits!
-# file2 = "../../../mixed/sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).wav"	#with seuclidean metrics it makes similarities hits!
-# file2 = "../../../mixed/sw03864-A_9_20__A02_ST(0.00)L(31.77)G(2.80)R(9.69)S(1.03).wav"
-# file1 = "../../../mixed/sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
-# file2 = "../../../mixed/sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
+# file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
+# file2 = "../../../edited-messages/A00.wav"
+# file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
+# file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
+# file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
+# file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).wav" #with seuclidean metrics it makes similarities hits!
+# file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).wav"	#with seuclidean metrics it makes similarities hits!
+# file2 = "../../sw03864-A_9_20__A02_ST(0.00)L(31.77)G(2.80)R(9.69)S(1.03).wav"
+# file1 = "../../sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
+# file2 = "../../sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
 
 
 
@@ -491,15 +590,15 @@ cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euc
 print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
 # print("My distance", dist2)
 
-sim_list1 = similarity(wp1)
+sim_list1 = similarity_new(wp1)
 # sim_list2 = similarity(wp2)
+# similarity_new(wp1)
 
+# gram_matrix = gram_matrix(feature1)
+# gram_matrix = image_filter(gram_matrix)
+gram_matrix = None
 
-gram_matrix = gram_matrix(feature1)
-gram_matrix = image_filter(gram_matrix)
-# gram_matrix = None
-
-plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[parsed1, parsed2], gram_matrix=gram_matrix)
+plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
 # plot_phn_audio(feature2, file=file2, info=[parsed2])
 
@@ -528,8 +627,8 @@ img = cv2.imread('Lines.png')
 # plt.show()
 
 kernel = np.array([[0, -25, 1],
-                   [-25, 5, -25],
-                   [1, -25, 0]])
+				   [-25, 5, -25],
+				   [1, -25, 0]])
 
 dst = cv2.filter2D(img, -1, kernel)
 cv2.imwrite("filtered.png", dst)
@@ -542,7 +641,9 @@ cv2.imwrite("filtered.png", dst)
 
 # file1 = "../../../sw00000-A_0_0__A00_ST(0.00)L(3.60)G(4.89)R(1.73)S(1.08).wav"
 # file2 = "../../../sw00000-A_0_0__A00_ST(0.00)L(6.36)G(2.21)R(2.91)S(0.99).wav"
-# playback([file1, file2], sim_list1)
+file1 = file1.replace('lin', 'wav')
+file2 = file2.replace('lin', 'wav')
+playback([file1, file2], sim_list1)
 
 
 

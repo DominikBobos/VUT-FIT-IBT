@@ -13,6 +13,7 @@ parser.add_argument("--phn", action="store_true", help="Export phoneme posterior
 parser.add_argument("--lat", action="store_true", help="Export lattices from phonemes posteriors")
 parser.add_argument("--bnf", action="store_true", help="Export bottle-neck features") 
 parser.add_argument("--resample", action="store_true", help="Resample to sampling rate 8kHz while preserving speed") 
+parser.add_argument("--posttostrlat", action="store_true", help="Resample to sampling rate 8kHz while preserving speed") 
 arguments = parser.parse_args()
 
 
@@ -33,7 +34,7 @@ else:
 		sys.stderr.write("Invalid source directory.\n")
 		sys.exit(1)
 if not arguments.dst:
-	dst = os.getcwd()
+	dst = os.getcwd() + '/'
 else:
 	if os.path.isdir(arguments.dst):
 		dst = arguments.dst
@@ -51,7 +52,7 @@ def get_posteriors():
 	if os.path.isfile("set_phnrec") == False:
 		sys.stderr.write("set_phnrec script is not found")
 		sys.exit(1)
-
+	is_initialized = False
 	for idx, file in enumerate(files):
 		src_file = file
 		# src_file = src_file.replace(" ", "\\ ") #same goes for '(', ')'
@@ -66,6 +67,13 @@ phnrec -c $phnrecdir/PHN_CZ_SPDAT_LCRC_N1500/ -w lin16 -t {} -i "{}" -o "{}"
 		elif arguments.phn:
 			dst_file = dst + file.split('/')[-1].replace('.wav', '.lin')
 			if os.path.exists(dst_file):
+				print("File already exists")
+				continue
+			if os.path.exists("/media/dominik/ADATAHD650/DOKUMENTY/VUT/5semester/IBT/train/train_clear/train_clear_phn/" + file.split('/')[-1].replace('.wav', '.lin')):
+				print("File already exists in train_clear_phn")
+				continue
+			if os.path.exists("/media/dominik/ADATAHD650/DOKUMENTY/VUT/5semester/IBT/eval/eval_clear/eval_clear_phn/" + file.split('/')[-1].replace('.wav', '.lin')):
+				print("File already exists in eval_clear_phn")
 				continue
 			call(""". {}
 phnrec -c $phnrecdir/PHN_CZ_SPDAT_LCRC_N1500/ -w lin16 -t {} -i "{}" -o "{}"
@@ -83,9 +91,19 @@ phnrec -c $phnrecdir/PHN_CZ_SPDAT_LCRC_N1500/ -w lin16 -t {} -i "{}" -o "{}"
 			dst_file = dst + file.split('/')[-1].replace('.wav', '.fea')
 			nn_weights = "FisherMono" # "FisherTri" "BabelMulti"
 			if os.path.exists(dst_file):
+				print("File already exists")
 				continue
 			call("python3 {} '{}' '{}' '{}'".format(bnf, nn_weights, src_file, dst_file), shell=True) 
 		elif arguments.lat:
+			if os.path.exists(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.latt')):
+				print("File already exists")
+				continue
+
+			if is_initialized == False:
+				call("""cd {}
+./post_to_lattice_init.sh '{}'
+			""".format(lattice.split('lattice.sh')[0], dst), shell=True)
+				is_initialized = True
 			# edit model config
 			call("cp /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config.gmm /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config", shell=True)
 			call("""cd {}
@@ -94,4 +112,30 @@ phnrec -c $phnrecdir/PHN_CZ_SPDAT_LCRC_N1500/ -w lin16 -t {} -i "{}" -o "{}"
 			call("cp /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config.backup /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config", shell=True)
 		else:
 			print("Please select wanted operation. Use --help for details.")
-get_posteriors()
+
+
+if arguments.posttostrlat:
+	files = glob.glob(src+ '/' + '*.lin')
+	is_initialized = False
+	for idx, file in enumerate(files):
+		src_file = file
+		print("{}/{} (file: {})".format(idx, len(files), file.split('/')[-1]))
+		if os.path.exists(dst + '/' + file.split('/')[-1].replace('.lin', '.latt')):
+			print("File already exists")
+			continue
+		# edit model config
+		call("cp /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config.gmm /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config", shell=True)
+		
+		if is_initialized == False:
+			call("""cd {}
+./post_to_lattice_init.sh '{}'
+		""".format(lattice.split('lattice.sh')[0], dst), shell=True)
+			is_initialized = True
+
+		call("""cd {}
+./post_to_lattice.sh '{}' '{}' '{}'
+		""".format(lattice.split('lattice.sh')[0], src_file[:-4], dst, file.split('/')[-1][:-4]), shell=True)
+		call("cp /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config.backup /etc/PhnRec/PHN_CZ_SPDAT_LCRC_N1500/config", shell=True)
+
+else:
+	get_posteriors()
