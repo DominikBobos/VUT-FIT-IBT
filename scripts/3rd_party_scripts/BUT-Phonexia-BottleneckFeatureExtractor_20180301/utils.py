@@ -73,9 +73,9 @@ def mel_fbank_mx(winlen_nfft, fs, NUMCHANS=20, LOFREQ=0.0, HIFREQ=None):
      """
     if not HIFREQ: HIFREQ = 0.5 * fs
     nfft = 2**int(np.ceil(np.log2(winlen_nfft))) if winlen_nfft > 0 else -int(winlen_nfft)
-    fbin_mel = mel(np.arange(nfft // 2 + 1, dtype=float) * fs // nfft)
+    fbin_mel = mel(np.arange(nfft / 2 + 1, dtype=float) * fs / nfft)
     cbin_mel = np.linspace(mel(LOFREQ), mel(HIFREQ), NUMCHANS + 2)
-    cind = np.floor(mel_inv(cbin_mel) // fs * nfft).astype(int) + 1
+    cind = np.floor(mel_inv(cbin_mel) / fs * nfft).astype(int) + 1
     mfb = np.zeros((len(fbin_mel), NUMCHANS))
     for i in range(NUMCHANS):
          mfb[cind[i]  :cind[i+1], i] = (cbin_mel[i]  -fbin_mel[cind[i]  :cind[i+1]]) / (cbin_mel[i]  -cbin_mel[i+1])
@@ -144,7 +144,7 @@ def read_htk(file):
     try:
         nSamples, sampPeriod, sampSize, parmKind = struct.unpack(">IIHH", fh.read(12))
         m = np.frombuffer(fh.read(nSamples*sampSize), 'i1')
-        m = m.view('>f').reshape(nSamples,sampSize/4)
+        m = m.view('>f').reshape(nSamples,sampSize//4)
     finally:
         if fh is not file: fh.close()
     return m 

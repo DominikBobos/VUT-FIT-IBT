@@ -222,6 +222,7 @@ def mix():
 				index = 0
 
 
+
 """''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Counts the total count of all files
 counts the total duration of all files

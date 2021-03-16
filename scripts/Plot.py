@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib import cm
-import librosa
-import librosa.display
+import wave
+
 
 
 phn_labels = ['a', 'a:', 'au', 'b', 'c', 'd', 'dZ', 'dz', 'e', 'e:', 
@@ -119,3 +119,35 @@ def PlotPhnAudio(phn_posteriors=None, file=None, info=[]):
 			filename = info[0][0] + ' ' + info[0][3]
 	
 	tick = 0.01	
+	
+	if phn_posteriors is not None:
+		fig, (ax, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [4, 1]})
+		# fig = plt.figure(figsize=(8, 6))
+		# ax = fig.add_subplot(2, 1, 1)
+		ax.set_title('File 1: {}, repeat: {} times,'.format(filename, info[0][7]))
+		ax.set_xlabel("Time [s]")
+		ax.set_ylabel(feat_name)
+		ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * tick))
+		ax.xaxis.set_major_formatter(ticks_x)
+		ax.tick_params(axis='x', rotation=20)
+		if (phn_posteriors.shape[1] == 46):
+			ax.yaxis.set_major_locator(plt.MaxNLocator(46))
+			ax.yaxis.set_major_formatter(ticker.IndexFormatter(phn_labels))
+			# labels = [item.get_text() for item in ax.get_yticklabels()]
+			# labels[1] = 'Testing'
+			# ax.set_yticklabels(labels)
+			# plt.yticks(np.arange(len(phn_labels)), phn_labels)
+		features_mfcc1 = np.swapaxes(phn_posteriors, 0, 1)
+		cax = ax.imshow(features_mfcc1, interpolation='nearest', cmap=cm.nipy_spectral, origin='lower', aspect='auto')
+		# ax2 = fig.add_subplot(2, 1, 2)
+		spf = wave.open(file.replace("lin", "wav"), "r")
+		# Extract Raw Audio from Wav File
+		signal = spf.readframes(-1)
+		signal = np.frombuffer(signal, dtype='int16')
+		fs = spf.getframerate()
+		time = np.linspace(0, len(signal) / fs, num=len(signal))
+		# ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * tick/100))
+		# ax2.xaxis.set_major_formatter(ticks_x)
+		# ax2.tick_params(axis='x', rotation=20)
+		ax2.plot(time, signal)
+		plt.axis(xmin=0,xmax=time[-1])

@@ -1,8 +1,10 @@
 import pyaudio
 import wave
 import time
+import sys
 
-#currently just for two files playback
+
+# currently just for two files playback
 def Playback(files, sim_list):
 	# set desired values
 

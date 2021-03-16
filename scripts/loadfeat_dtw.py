@@ -235,7 +235,7 @@ def plot(feature1=None, feature2=None, dist=None, wp=None, sim_list=None, dtw_na
 		ax.set_xlabel("File 2 Time [s]")
 		ax.set_ylabel("File 1 Time [s]")
 		fig.suptitle(dtw_name + ' DTW alignment path')
-		ax.set_title("Distance: {0:.6f}".format(dist[wp[-1, 0], wp[-1, 1]]))
+		# ax.set_title("Distance: {0:.6f}".format(dist[wp[-1, 0], wp[-1, 1]]))
 		
 		ax.plot(wp[:, 1], wp[:, 0], label='Optimal path',  color='coral', linewidth=2.0)
 		if sim_list is not None:
@@ -355,7 +355,7 @@ def similarity_new(wp, interval=[0.85, 1.15]):
 	direction = -1	 # unknown at first
 	prev_direction = -1
 	prev_point = None
-	for point in np.flip(wp,0):
+	for point in wp: #np.flip(wp,0):
 		if prev_point is None:
 			prev_point = point
 			continue
@@ -429,7 +429,7 @@ def similarity_new(wp, interval=[0.85, 1.15]):
 		false_trend -= 1
 		for i in range(constant_false):
 			if len(tmp_list) > 0: 
-				del tmp_list[-1]  
+				del tmp_lis[t-1]  
 				false_trend -= 1
 		ratio = (tmp_list[-1][0] - tmp_list[0][0]) / (tmp_list[-1][1] - tmp_list[0][1])
 		print(ratio)
@@ -549,7 +549,7 @@ file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
 file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
 # file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
-file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
+# file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
 # file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 # file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
@@ -584,10 +584,18 @@ feature2 = reduce_dimension(feature2)
 # 	count.append(time.time()-start)
 # print("euclidean", np.mean(count))
 
-cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float))	#cosine rychlejsie
+cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
+cost_matrix1, wp1 = fastdtw(feature1, feature2, dist=euclidean)
 # cost_matrix2, dist2, wp2 = my_dtw(feature1, feature2)
 # print(feature1)
-print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
+# print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
+# print("Distance", cost_matrix1)
+cost_matrix1 = cdist(feature1, feature2, metric='euclidean')
+wp1 = np.asarray(wp1)
+# wp1 = [list(elem) for elem in wp1]
+print(type(wp1), np.shape(wp1) ,wp1)
 # print("My distance", dist2)
 
 sim_list1 = similarity_new(wp1)
@@ -641,9 +649,9 @@ cv2.imwrite("filtered.png", dst)
 
 # file1 = "../../../sw00000-A_0_0__A00_ST(0.00)L(3.60)G(4.89)R(1.73)S(1.08).wav"
 # file2 = "../../../sw00000-A_0_0__A00_ST(0.00)L(6.36)G(2.21)R(2.91)S(0.99).wav"
-file1 = file1.replace('lin', 'wav')
-file2 = file2.replace('lin', 'wav')
-playback([file1, file2], sim_list1)
+# file1 = file1.replace('lin', 'wav')
+# file2 = file2.replace('lin', 'wav')
+# playback([file1, file2], sim_list1)
 
 
 

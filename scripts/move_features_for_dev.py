@@ -22,3 +22,10 @@ for idx, file in enumerate(files):
 		shutil.move(parent_dir + '/train_clear/train_clear_str/' + filename + '.txt', parent_dir + '/eval_clear/eval_clear_str/' + filename + '.txt')
 		shutil.move(parent_dir + '/train_clear/train_clear_lat/' + filename + '.latt', parent_dir + '/eval_clear/eval_clear_lat/' + filename + '.latt')
 		print(filename,"'s features was moved succesfully.")
+
+
+		# sw02501-B_0_120
+		# sw02501-A_3_3.46
+		# sw02501-A_1_90
+		# sw02501-B_1_90
+		# sw02501-B_2_20
