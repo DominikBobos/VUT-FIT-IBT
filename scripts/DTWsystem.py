@@ -221,21 +221,32 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
     result_list = []
     hits_count = 0
     threshold = [0.9, 1.1]
+    hit_threshold = 0.0
+    loop_count = 0
+    if feature == 'mfcc':
+        hit_threshold = 35.0
+        loop_count = 49
+    if feature == 'posteriors':
+        hit_threshold = 4.0
+        loop_count = 49
+    if feature == 'bottleneck':
+        hit_threshold == 10.0 #netusim zatial
+        loop_count = 49
 
     
     one_round = []
     for idx, file in enumerate(test[0]):  # train[0] == list of files
-        if idx > 124:   # first 124 are done
-            continue
+        # if idx > 124:   # first 124 are done
+        #     continue
 
-        if idx < 125:   # starting from 125 to 249
-            continue
-        if idx > 249:
-            continue
+        # if idx < 125:   # starting from 125 to 249
+        #     continue
+        # if idx > 249:
+        #     continue
         
-        if idx < 250:   # from 250 to the end
-            continue
-            
+        # if idx < 250:   # from 250 to the end
+        #     continue
+
         start = time.time()
         parsed_file = ArrayFromFeatures.Parse(file)
         file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
@@ -274,7 +285,8 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
 
             score_list.append(score)
             dist_list.append(final_dist)
-            if final_dist < 4.0:
+
+            if final_dist < hit_threshold:
                 hits_count += 1
                 hit_dist.append(final_dist)
 
@@ -283,7 +295,7 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
             #     # result_list_nested.append([file_nested.split('/')[-1], sim_list, ratio_list, score])
             #     if hit:
             #         hits_count += 1
-            if hits_count > 1 or idx_nested > 49:  # "surely" got hit, going to the next sample / or counting too much
+            if hits_count >= 1 or idx_nested > loop_count:  # "surely" got hit, going to the next sample / or counting too much
                 break
         f = open("evalBaseDTW.txt", "a")
 

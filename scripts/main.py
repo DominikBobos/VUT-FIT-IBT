@@ -79,6 +79,6 @@ if __name__ == "__main__":
     system = arguments.system.lower()
     train_files, train_labels, test_files, test_labels = LabelFiles(src, feature)
     if system == 'basedtw':
-        result_list = DTWsystem.BaseDtwUknown([train_files, train_labels], [test_files, test_labels],
+        result_list = DTWsystem.BaseDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, reduce_dimension=True)
         print(result_list)
