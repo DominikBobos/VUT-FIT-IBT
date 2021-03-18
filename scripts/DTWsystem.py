@@ -230,8 +230,8 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
         hit_threshold = 4.0
         loop_count = 49
     if feature == 'bottleneck':
-        hit_threshold == 10.0 #netusim zatial
-        loop_count = 49
+        hit_threshold = 1.25 #netusim zatial
+        loop_count = 99
 
     
     one_round = []

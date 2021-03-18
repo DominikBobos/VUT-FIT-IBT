@@ -78,4 +78,6 @@ def GetArray(file, feature, reduce_dimension):
         file_arr = LoadHTK(file)
         if reduce_dimension:
             file_arr = ReduceDimension(file_arr)
+    if feature == 'bottleneck':
+        file_arr = LoadHTK(file)
     return file_arr
