@@ -41,7 +41,7 @@ def FeatureToExtension(feature):
     elif feature == 'posteriors':
         return '*/*.lin'
     elif feature == 'bottleneck':
-        return '*/*.bnf'  # este neviem ako to bude asi md5
+        return '*/*.fea'  # este neviem ako to bude asi md5
     elif feature == 'string':
         return '*/*.txt'
     elif feature == 'lattice':
