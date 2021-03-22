@@ -82,3 +82,7 @@ if __name__ == "__main__":
         result_list = DTWsystem.BaseDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, reduce_dimension=True)
         print(result_list)
+    if system == 'arenjansen' or system == 'rqaunknown':
+        result_list = DTWsystem.RQAunknown([train_files, train_labels], [test_files, test_labels],
+                                                        feature=feature, 
+                                                        frame_reduction=5, reduce_dimension=True)

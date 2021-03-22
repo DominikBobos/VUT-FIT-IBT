@@ -8,6 +8,7 @@ from fastdtw import fastdtw
 from sklearn.utils import shuffle
 import time
 
+
 def MyDTW(o, r):
     cost_matrix = cdist(o, r, metric='euclidean')
     m, n = np.shape(cost_matrix)
@@ -218,6 +219,7 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
         train = []
     else:
         train[0], train[1] = shuffle(train[0], train[1], random_state=10)
+        train_nested = train.copy()
     result_list = []
     hits_count = 0
     threshold = [0.9, 1.1]
@@ -297,41 +299,85 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
             #         hits_count += 1
             if hits_count >= 1 or idx_nested > loop_count:  # "surely" got hit, going to the next sample / or counting too much
                 break
-        f = open("evalBaseDTW.txt", "a")
+        f = open("evalBaseDTW_{}.txt".format(feature), "a")
 
         # if len(result_list_nested) > 0:
         if hits_count > 0:
             hits_count = 0
             score_list = list(filter(lambda x: threshold[0]< x < threshold[1], score_list))
 
-            # result_list.append([file.split('/')[-1], test[1][idx], "1", min(x[2] for x in result_list_nested)[0],
-            #                     tuple(result_list_nested)])  # train[1] == label
+            result_list.append("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "1",
+                                              min(score_list), max(hit_dist)))  # train[1] == label
             f.write("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "1",
                                               min(score_list), max(hit_dist)))
                                               # min(x[2] for x in result_list_nested)[0]))
         else:
             # if not result_list_nested:
             if not score_list:
-                # result_list.append(
-                #     [file.split('/')[-1], test[1][idx], "0", 0.0, tuple(result_list_nested)])  # train[1] == label
+                result_list.append("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0", "0.0", min(dist_list)))
                 f.write("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0", "0.0", min(dist_list)))
             else:
-                # result_list.append([file.split('/')[-1], test[1][idx], "0", max(x[2] for x in result_list_nested)[0],
-                #                     tuple(result_list_nested)])  # train[1] == label
+                result_list.append("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0",
+                                                  max(score_list), min(dist_list)))# train[1] == label
                 f.write("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0",
                                                   max(score_list), min(dist_list)))
                                                   # max(x[2] for x in result_list_nested)[0]))
         # result_list_nested.clear()
-        del score_list
-        del parsed_file
-        del file_array
-        del hit_dist
-        del dist_list
+        # del score_list
+        # del parsed_file
+        # del file_array
+        # del hit_dist
+        # del dist_list
         # print(result_list)
         f.close()
         one_round.append(time.time()-start)
         print('Next File. Time: {}s'.format(one_round[-1]))
-    ft = open("timeBaseDTW.txt", "a")
+    ft = open("timeBaseDTW_{}.txt".format(feature), "a")
     ft.write("MEAN:{}\tTOTAL:{}\n".format(np.mean(one_round),np.sum(one_round)))
     ft.close()
     return result_list
+
+
+def RQAunknown(train=None, test=None, feature='mfcc', frame_reduction=5, reduce_dimension=True):
+    if test is None:
+        test = []
+    else:
+        test[0], test[1] = shuffle(test[0], test[1], random_state=10)
+        test_nested = test.copy()
+    if train is None:
+        train = []
+    else:
+        train[0], train[1] = shuffle(train[0], train[1], random_state=10)
+    result_list = []
+    hits_count = 0
+    threshold = [0.9, 1.1]
+    hit_threshold = 0.0
+    loop_count = 0
+    if feature == 'mfcc':
+        hit_threshold = 35.0
+        loop_count = 49
+    if feature == 'posteriors':
+        hit_threshold = 4.0
+        loop_count = 49
+    if feature == 'bottleneck':
+        hit_threshold = 1.25 #netusim zatial
+        loop_count = 99
+
+    rqa_list = []
+    rqa_time = []
+    for idx, file in enumerate(test[0]):    #rqa analysis first
+        start = time.time()
+        parsed_file = ArrayFromFeatures.Parse(file)
+        if float(parsed_file[-1]) < 2.0:  # total duration
+            rqa_list.append([])
+            print("Skipping", file.split('/')[-1], test[1][idx], "because the total duration {} is less than 2 seconds".format(parsed_file[-1]), time.time()-start)
+            rqa_time.append(time.time()-start)
+            continue
+        file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+        reduced_array = np.compress([True if i % frame_reduction == 0 else False for i in range(file_array.shape[0])], file_array, axis=0)
+        rec_matrix = librosa.segment.recurrence_matrix(reduced_array.T,width=30, k=reduced_array.shape[0]//10, mode='affinity', metric='cosine') #['connectivity', 'distance', 'affinity']
+        score, path = librosa.sequence.rqa(rec_matrix, np.inf, np.inf, knight_moves=True)
+        rqa_list.append(path)
+        rqa_time.append(time.time()-start)
+        print(file.split('/')[-1], test[1][idx], time.time()-start)
+    print(np.sum(rqa_time), np.mean(rqa_time))

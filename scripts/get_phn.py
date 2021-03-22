@@ -21,8 +21,8 @@ arguments = parser.parse_args()
 Script paths 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"""
 phnrec = "/home/dominik/Desktop/bak/scripts/VUT-FIT-IBT/scripts/set_phnrec"
-bnf = "/home/dominik/Desktop/bak/scripts/VUT-FIT-IBT/scripts/3rd_party_scripts/BUT-Phonexia-BottleneckFeatureExtractor_20180301/audio2bottleneck.py"
-lattice = "/home/dominik/Desktop/bak/scripts/VUT-FIT-IBT/scripts/3rd_party_scripts/lattice_generation/lattice.sh"
+bnf = "/home/dominik/Desktop/bak/scripts/VUT-FIT-IBT/scripts/third_party_scripts/BUT-Phonexia-BottleneckFeatureExtractor_20180301/audio2bottleneck.py"
+lattice = "/home/dominik/Desktop/bak/scripts/VUT-FIT-IBT/scripts/third_party_scripts/lattice_generation/lattice.sh"
 
 
 if not arguments.src:
@@ -69,15 +69,15 @@ phnrec -c $phnrecdir/PHN_CZ_SPDAT_LCRC_N1500/ -w lin16 -t {} -i "{}" -o "{}"
 			if os.path.exists(dst_file):
 				print("File already exists")
 				continue
-			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_phn/" + file.split('/')[-1].replace('.wav', '.lin')):
-				print("File already exists in train_clear_phn")
-				continue
-			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_phn/" + file.split('/')[-1].replace('.wav', '.lin')):
-				print("File already exists in eval_clear_phn")
-				continue
-			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/cut_edited/cut_phn2/" + file.split('/')[-1].replace('.wav', '.lin')):
-				print("File already exists in cut_phn2")
-				continue
+			# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_phn/" + file.split('/')[-1].replace('.wav', '.lin')):
+			# 	print("File already exists in train_clear_phn")
+			# 	continue
+			# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_phn/" + file.split('/')[-1].replace('.wav', '.lin')):
+			# 	print("File already exists in eval_clear_phn")
+			# 	continue
+			# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/cut_edited/cut_phn2/" + file.split('/')[-1].replace('.wav', '.lin')):
+			# 	print("File already exists in cut_phn2")
+			# 	continue
 			call(""". {}
 phnrec -c $phnrecdir/PHN_CZ_SPDAT_LCRC_N1500/ -w lin16 -t {} -i "{}" -o "{}"
 			""".format(phnrec, "post", src_file, dst_file), shell=True) 
@@ -96,40 +96,49 @@ phnrec -c $phnrecdir/PHN_CZ_SPDAT_LCRC_N1500/ -w lin16 -t {} -i "{}" -o "{}"
 			if os.path.exists(dst_file):
 				print("File already exists")
 				continue
+			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_bnf/" + file.split('/')[-1].replace('.wav', '.fea')):
+				print("File already exists in train_clear_bnf")
+				continue
+			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_bnf/" + file.split('/')[-1].replace('.wav', '.fea')):
+				print("File already exists in eval_clear_bnf")
+				continue
+			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/cut_edited/cut_bnf/" + file.split('/')[-1].replace('.wav', '.fea')):
+				print("File already exists in cut_bnf")
+				continue
 			call("python3 {} '{}' '{}' '{}'".format(bnf, nn_weights, src_file, dst_file), shell=True) 
 		elif arguments.lat:
 
-			if os.path.exists(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.txt')):
-				print("File already exists")
-				if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_str/" + file.split('/')[-1].replace('.wav', '.txt')):
-					print("File already exists in train_clear_lat and cut_lat REMOVING")
-					os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.txt'))
-				if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_str/" + file.split('/')[-1].replace('.wav', '.txt')):
-					print("File already exists in eval_clear_lat and cut_lat REMOVING")
-					os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.txt'))
+			# if os.path.exists(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.txt')):
+			# 	print("File already exists")
+			# 	if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_str/" + file.split('/')[-1].replace('.wav', '.txt')):
+			# 		print("File already exists in train_clear_lat and cut_lat REMOVING")
+			# 		os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.txt'))
+			# 	if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_str/" + file.split('/')[-1].replace('.wav', '.txt')):
+			# 		print("File already exists in eval_clear_lat and cut_lat REMOVING")
+			# 		os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.txt'))
 			
 			
 			if os.path.exists(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.latt')):
 				print("File already exists")
-				if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
-					print("File already exists in train_clear_lat and cut_lat REMOVING")
-					os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.latt'))
-				if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
-					print("File already exists in eval_clear_lat and cut_lat REMOVING")
-					os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.latt'))
+				# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
+				# 	print("File already exists in train_clear_lat and cut_lat REMOVING")
+				# 	os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.latt'))
+				# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
+				# 	print("File already exists in eval_clear_lat and cut_lat REMOVING")
+				# 	os.remove(dst + '/lattice/' + file.split('/')[-1].replace('.wav', '.latt'))
 				continue
-			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
-				print("File already exists in train_clear_lat")
-				continue
-			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
-				print("File already exists in eval_clear_lat")
-				continue
-			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/cut_edited/cut_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
-				print("File already exists in cut_lat")
-				continue
-			if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/cut_edited/cut_lat2/" + file.split('/')[-1].replace('.wav', '.latt')):
-				print("File already exists in cut_lat2")
-				continue
+			# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/train/train_clear/train_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
+			# 	print("File already exists in train_clear_lat")
+			# 	continue
+			# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/eval/eval_clear/eval_clear_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
+			# 	print("File already exists in eval_clear_lat")
+			# 	continue
+			# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/cut_edited/cut_lat/" + file.split('/')[-1].replace('.wav', '.latt')):
+			# 	print("File already exists in cut_lat")
+			# 	continue
+			# if os.path.exists("/media/dominik/2TB_ADATAHD330/IBT/cut_edited/cut_lat2/" + file.split('/')[-1].replace('.wav', '.latt')):
+			# 	print("File already exists in cut_lat2")
+			# 	continue
 			if is_initialized == False:
 				call("""cd {}
 ./post_to_lattice_init.sh '{}'

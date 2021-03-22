@@ -524,8 +524,10 @@ def parse(filename):
 	return parsed_file	  	
 
 
+
 def gram_matrix(feature):
 	matrix = feature.dot(feature.T)#(feature.dot(feature.T)) / (np.linalg.norm(feature) * np.linalg.norm(feature.T))			
+	# np.fill_diagonal(np.flip(matrix), np.zeros((4, 4)))
 	return 0.5 * (matrix + 1)	
 	# return feature
 
@@ -535,6 +537,9 @@ def image_filter(matrix, threshold=0.7, percentile=70, variance=5):
 	matrix[matrix >= threshold] = 1.0
 	matrix = ndimage.percentile_filter(matrix, percentile=percentile, footprint=diag_matrix, mode='constant', cval=0.0)
 	matrix = ndimage.gaussian_filter(matrix, variance)
+	# np.put(matrix, np.diag(np.flip(matrix)), 0.0)
+	# np.fill_diagonal(np.flip(matrix), 0.0)
+	# np.fill_diagonal(np.flip(matrix[:,1:]), 0.0)
 	return matrix
 
 
@@ -550,12 +555,13 @@ file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#w
 # file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
 # file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
-# file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
+file1 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 # file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 
 
 # file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
+# file1 = "../../../edited-messages/A00.wav"
 # file2 = "../../../edited-messages/A00.wav"
 # file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
 # file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
@@ -565,6 +571,12 @@ file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#w
 # file2 = "../../sw03864-A_9_20__A02_ST(0.00)L(31.77)G(2.80)R(9.69)S(1.03).wav"
 # file1 = "../../sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
 # file2 = "../../sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
+
+# file1 = "/home/dominik/Desktop/bak/dev_data/eval/eval_clear/eval_clear_phn/sw02514-A_4_90.lin"
+# file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_phn/sw04171-A_12_20__B00_ST(7.00)L(70.10)G(3.47)R(27.19)S(0.96).lin"
+
+
+
 
 
 
@@ -584,29 +596,74 @@ feature2 = reduce_dimension(feature2)
 # 	count.append(time.time()-start)
 # print("euclidean", np.mean(count))
 
-cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
-cost_matrix1, wp1 = fastdtw(feature1, feature2, dist=euclidean)
+
+# cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
+#from fastdtw import fastdtw
+#from scipy.spatial.distance import euclidean
+#cost_matrix1, wp1 = fastdtw(feature1, feature2, dist=euclidean)
 # cost_matrix2, dist2, wp2 = my_dtw(feature1, feature2)
 # print(feature1)
 # print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
 # print("Distance", cost_matrix1)
-cost_matrix1 = cdist(feature1, feature2, metric='euclidean')
-wp1 = np.asarray(wp1)
+#cost_matrix1 = cdist(feature1, feature2, metric='euclidean')
+#wp1 = np.asarray(wp1)
 # wp1 = [list(elem) for elem in wp1]
-print(type(wp1), np.shape(wp1) ,wp1)
+#print(type(wp1), np.shape(wp1) ,wp1)
 # print("My distance", dist2)
 
-sim_list1 = similarity_new(wp1)
+# sim_list1 = similarity_new(wp1)
 # sim_list2 = similarity(wp2)
 # similarity_new(wp1)
-
+# import time
+# start = time.time()
 # gram_matrix = gram_matrix(feature1)
 # gram_matrix = image_filter(gram_matrix)
-gram_matrix = None
+# print(time.time() - start)
+# gram_matrix = None
+# import skimage.measure
+# test = skimage.measure.block_reduce(feature1, (feature1.shape[0], feature1.shape[1]), np.mean)
+# test = pooling(feature1, ksize=(feature1.shape[0]//2, feature1.shape[1]), method='mean')
 
-plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
+feature1 = np.compress([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
+
+# chroma_stack = librosa.feature.stack_memory(feature1.T, n_steps=10, delay=3)
+import time
+start = time.time()
+gram_matrix = librosa.segment.recurrence_matrix(feature1.T,width=30, k=feature1.shape[0]//10,
+                                        mode='affinity',	#['connectivity', 'distance', 'affinity']
+                                        metric='cosine')
+print("takto dlho trva recc matrix", time.time() - start, feature1.shape)
+# using infinite cost for gaps enforces strict path continuation
+start = time.time()
+L_score, L_path = librosa.sequence.rqa(gram_matrix, np.inf, np.inf,
+                                       knight_moves=True)
+print("spocitane idem uz len vykreslit", time.time() - start, L_path)
+fig, ax = plt.subplots(ncols=2)
+# librosa.display.specshow(gram_matrix, x_axis='frames', y_axis='frames', ax=ax[0])
+ax[0].imshow(gram_matrix, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
+# ax[0].set(title='Recurrence matrix')
+# librosa.display.specshow(L_score, x_axis='frames', y_axis='frames', ax=ax[1])
+ax[1].imshow(L_score, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
+# ax[1].set(title='Alignment score matrix')
+ax[1].plot(L_path[:, 1], L_path[:, 0], label='Optimal path', color='c')
+ax[1].legend()
+ax[1].label_outer()
+
+# score, path = librosa.sequence.rqa(gram_matrix, np.inf, np.inf,
+#                                        knight_moves=False)
+# print(score, path)
+# fig, ax = plt.subplots(ncols=2, sharex=True, sharey=True)
+# # librosa.display.specshow(gram_matrix, x_axis='frames', y_axis='frames', ax=ax[0])
+# # ax[0].set(title='Recurrence matrix')
+# # librosa.display.specshow(score, x_axis='frames', y_axis='frames', ax=ax[1])
+# ax[1].set(title='Alignment score matrix')
+# ax[1].plot(path[:, 1], path[:, 0], label='Optimal path', color='c')
+# ax[1].legend()
+# ax[1].label_outer()
+
+
+
+# plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
 # plot_phn_audio(feature2, file=file2, info=[parsed2])
 
