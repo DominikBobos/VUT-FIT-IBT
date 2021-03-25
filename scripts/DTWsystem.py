@@ -7,7 +7,7 @@ import ArrayFromFeatures
 from fastdtw import fastdtw
 from sklearn.utils import shuffle
 import time
-
+import pickle
 
 def MyDTW(o, r):
     cost_matrix = cdist(o, r, metric='euclidean')
@@ -232,12 +232,13 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
         hit_threshold = 4.0
         loop_count = 49
     if feature == 'bottleneck':
-        hit_threshold = 1.25 #netusim zatial
+        hit_threshold = 1.25 
         loop_count = 99
 
     
     one_round = []
     for idx, file in enumerate(test[0]):  # train[0] == list of files
+        # to separate to  3 threads
         # if idx > 124:   # first 124 are done
         #     continue
 
@@ -248,11 +249,9 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
         
         # if idx < 250:   # from 250 to the end
         #     continue
-
         start = time.time()
         parsed_file = ArrayFromFeatures.Parse(file)
         file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
-        # result_list_nested = []
         score = 0 
         score_list = []
         dist_list = []
@@ -263,9 +262,6 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
                 continue
             parsed_file_nested = ArrayFromFeatures.Parse(file_nested)
             file_nested_array = ArrayFromFeatures.GetArray(file_nested, feature, reduce_dimension)
-            # final_dist, wp = librosa.sequence.dtw(X=file_array.T, Y=file_nested_array.T, metric='euclidean',
-            #                                        weights_mul=np.array([np.sqrt([2]), 1, 1],
-            #                                                             dtype=np.float))  # cosine rychlejsie
             final_dist, wp = fastdtw(file_array, file_nested_array, dist=euclidean)
             sim_list, ratio_list, score, hit = SimilarityNew(np.asarray(wp), threshold)
             final_dist = final_dist / (file_array.shape[0] + file_nested_array.shape[0])
@@ -279,11 +275,6 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
                 parsed_file[0], "0" if test[1][idx] == 0 else "1:" + parsed_file[3], idx + 1, len(test[0]),
                 parsed_file_nested[0], "0" if test_nested[1][idx_nested] == 0 else "1:" + parsed_file_nested[3], idx_nested + 1, len(test[0]),
                 final_dist)) # final_dist[wp[-1, 0], wp[-1, 1]]
-            
-            # del final_dist
-            # del wp
-            # del parsed_file_nested
-            # del file_nested_array
 
             score_list.append(score)
             dist_list.append(final_dist)
@@ -292,11 +283,6 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
                 hits_count += 1
                 hit_dist.append(final_dist)
 
-            # if len(ratio_list) > 0:
-            #     # score_list.append(score)
-            #     # result_list_nested.append([file_nested.split('/')[-1], sim_list, ratio_list, score])
-            #     if hit:
-            #         hits_count += 1
             if hits_count >= 1 or idx_nested > loop_count:  # "surely" got hit, going to the next sample / or counting too much
                 break
         f = open("evalBaseDTW_{}.txt".format(feature), "a")
@@ -310,7 +296,6 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
                                               min(score_list), max(hit_dist)))  # train[1] == label
             f.write("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "1",
                                               min(score_list), max(hit_dist)))
-                                              # min(x[2] for x in result_list_nested)[0]))
         else:
             # if not result_list_nested:
             if not score_list:
@@ -320,15 +305,7 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
                 result_list.append("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0",
                                                   max(score_list), min(dist_list)))# train[1] == label
                 f.write("{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0",
-                                                  max(score_list), min(dist_list)))
-                                                  # max(x[2] for x in result_list_nested)[0]))
-        # result_list_nested.clear()
-        # del score_list
-        # del parsed_file
-        # del file_array
-        # del hit_dist
-        # del dist_list
-        # print(result_list)
+                                                  max(score_list), min(dist_list)))                               
         f.close()
         one_round.append(time.time()-start)
         print('Next File. Time: {}s'.format(one_round[-1]))
@@ -338,7 +315,9 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
     return result_list
 
 
-def RQAunknown(train=None, test=None, feature='mfcc', frame_reduction=5, reduce_dimension=True):
+def RQAunknown(train=None, test=None, feature='mfcc', frame_reduction=5, reduce_dimension=True, second_pass=True):
+    if frame_reduction < 1:
+        raise ValueError("Frame reduction must be at least 1 or bigger")
     if test is None:
         test = []
     else:
@@ -348,36 +327,152 @@ def RQAunknown(train=None, test=None, feature='mfcc', frame_reduction=5, reduce_
         train = []
     else:
         train[0], train[1] = shuffle(train[0], train[1], random_state=10)
+        train_nested = train.copy()
     result_list = []
-    hits_count = 0
-    threshold = [0.9, 1.1]
+    rqa_list = []
+    rqa_time = []
+    dtw_time = []
     hit_threshold = 0.0
     loop_count = 0
+    rqa_threshold = 500.0
     if feature == 'mfcc':
         hit_threshold = 35.0
         loop_count = 49
     if feature == 'posteriors':
-        hit_threshold = 4.0
+        hit_threshold = 9.0 #no idea
         loop_count = 49
     if feature == 'bottleneck':
         hit_threshold = 1.25 #netusim zatial
         loop_count = 99
 
-    rqa_list = []
-    rqa_time = []
-    for idx, file in enumerate(test[0]):    #rqa analysis first
-        start = time.time()
-        parsed_file = ArrayFromFeatures.Parse(file)
-        if float(parsed_file[-1]) < 2.0:  # total duration
-            rqa_list.append([])
-            print("Skipping", file.split('/')[-1], test[1][idx], "because the total duration {} is less than 2 seconds".format(parsed_file[-1]), time.time()-start)
+    try:
+        open_file = open("evaluations/objects/rqa_list_{}.pkl".format(feature), "rb")
+        rqa_list = pickle.load(open_file)
+        open_file.close()
+        print("rqa_list_{}.pkl found. RQA analysis will not be performed".format(feature))
+    except IOError:
+        print("No rqa_list_{}.pkl exist. RQA analysis will be performed".format(feature))
+
+    if not rqa_list:
+        for idx, file in enumerate(test[0]):    #rqa analysis first
+            start = time.time()
+            parsed_file = ArrayFromFeatures.Parse(file)
+            if float(parsed_file[-1]) < 3.0:  # total duration
+                rqa_list.append([file, [], 10000.0])
+                print("Skipping", file.split('/')[-1], test[1][idx], "because the total duration {} is less than 3.0 seconds".format(parsed_file[-1]), time.time()-start)
+                rqa_time.append(time.time()-start)
+                if second_pass == False:
+                    f = open("evalRQA_{}.txt".format(feature), "a")
+                    result_list.append("{}\t{}\t{}\t{}\t{}\n".format(
+                                        file.split('/')[-1], 
+                                        test[1][idx], 
+                                        "0",
+                                        0, 
+                                        rqa_list[-1][2])) 
+                    f.write("{}\t{}\t{}\t{}\t{}\n".format(
+                                        file.split('/')[-1], 
+                                        test[1][idx], 
+                                        "0", 
+                                        "0",
+                                        rqa_list[-1][2])) 
+                    f.close()
+                continue
+            file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            reduced_array = np.compress([True if i % frame_reduction == 0 else False for i in range(file_array.shape[0])], file_array, axis=0)
+            rec_matrix = librosa.segment.recurrence_matrix(reduced_array.T,width=30, k=reduced_array.shape[0]//10, mode='affinity', metric='cosine') #['connectivity', 'distance', 'affinity']
+            score, path = librosa.sequence.rqa(rec_matrix, np.inf, np.inf, knight_moves=True)
+            path_length = (int(path[-1][0])-int(path[0][0]))*frame_reduction
+            rqa_list.append([file, path, np.sum(rec_matrix[path])/(int(path[-1][0])-int(path[0][0]))] if path_length > 250 else [file, [], 5000.0]) #only frames longer than 2.5 seconds are valid
             rqa_time.append(time.time()-start)
-            continue
-        file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
-        reduced_array = np.compress([True if i % frame_reduction == 0 else False for i in range(file_array.shape[0])], file_array, axis=0)
-        rec_matrix = librosa.segment.recurrence_matrix(reduced_array.T,width=30, k=reduced_array.shape[0]//10, mode='affinity', metric='cosine') #['connectivity', 'distance', 'affinity']
-        score, path = librosa.sequence.rqa(rec_matrix, np.inf, np.inf, knight_moves=True)
-        rqa_list.append(path)
-        rqa_time.append(time.time()-start)
-        print(file.split('/')[-1], test[1][idx], time.time()-start)
-    print(np.sum(rqa_time), np.mean(rqa_time))
+            print("Processing {}[{}] ({}/{}), path length: {}, score: {}, time: {}".format(
+                    parsed_file[0], "0" if test[1][idx] == 0 else "1:" + parsed_file[3], 
+                    idx + 1, len(test[0]), 
+                    path_length,
+                    rqa_list[-1][2], 
+                    time.time()-start))
+            if second_pass == False:
+                f = open("evalRQA_{}.txt".format(feature), "a")
+                result_list.append("{}\t{}\t{}\t{}\t{}\n".format(
+                                    file.split('/')[-1], 
+                                    test[1][idx], 
+                                    "0" if (rqa_list[-1][1] == []) or (rqa_list[-1][2] > rqa_threshold) else "1", 
+                                    path_length,
+                                    rqa_list[-1][2])) 
+                f.write("{}\t{}\t{}\t{}\t{}\n".format(
+                                    file.split('/')[-1], 
+                                    test[1][idx], 
+                                    "0" if (rqa_list[-1][1] == []) or (rqa_list[-1][2] > rqa_threshold) else "1", 
+                                    path_length,
+                                    rqa_list[-1][2])) 
+                f.close()
+    if not rqa_time:
+        rqa_time = [0.]
+    print("RQA mean:", np.mean(rqa_time), "RQA total:", np.sum(rqa_time))
+    if second_pass == False:
+        ft = open("timeRQA_{}.txt".format(feature), "a")
+        ft.write("TOTAL_MEAN:{}\tTOTAL_TIME:{}\n".format(np.mean(rqa_time), np.sum(rqa_time)))
+        ft.close()
+
+    open_file = open("evaluations/objects/rqa_list_{}.pkl".format(feature), "wb")
+    pickle.dump(rqa_list, open_file)
+    open_file.close()
+    
+
+    if second_pass:
+        result_list = []
+        for idx, file in enumerate(test[0]):
+            start = time.time()
+            parsed_file = ArrayFromFeatures.Parse(file)
+            file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            file_array = np.compress([True if i % frame_reduction == 0 else False for i in range(file_array.shape[0])], file_array, axis=0)
+            # result_list_nested = []
+            dist_list = []
+            have_hit = False
+            nested_loop_count = 0
+            rqa_list = shuffle(rqa_list, random_state=8)
+            for idx_nested, rqa_item in enumerate(rqa_list):
+                if rqa_item[1] == []:
+                    continue
+                if file.split('/')[-1] == rqa_item[0].split('/')[-1]:
+                    continue
+                nested_loop_count += 1
+                parsed_file_nested = ArrayFromFeatures.Parse(rqa_item[0])
+                file_nested_array = ArrayFromFeatures.GetArray(rqa_item[0], feature, reduce_dimension)
+                file_nested_array = np.compress([True if i % frame_reduction == 0 else False for i in range(file_nested_array.shape[0])], file_nested_array, axis=0)
+                cost_matrix, wp = librosa.sequence.dtw(X=file_array.T, 
+                                                    Y=file_nested_array[int(rqa_item[1][0][0]):int(rqa_item[1][-1][0])].T, 
+                                                    metric='euclidean', 
+                                                    weights_mul=np.array([np.sqrt([2]),1,1], 
+                                                    dtype=np.float64))    #cosine rychlejsie
+                dtw_distance = cost_matrix[wp[-1, 0], wp[-1, 1]]
+                print("Processing {}[{}] ({}/{}) with {}[{}] ({}/{}). -> Distance={:.4f}".format(
+                    parsed_file[0], "0" if test[1][idx] == 0 else "1:" + parsed_file[3], idx + 1, len(test[0]),
+                    parsed_file_nested[0], "0" if len(parsed_file_nested) < 10 else "1:" + parsed_file_nested[3], idx_nested + 1, len(rqa_list),
+                    dtw_distance))
+                if dtw_distance < hit_threshold:
+                    have_hit = True
+                    f = open("evalRQA_DTW_{}.txt".format(feature), "a")
+                    result_list.append("{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "1", dtw_distance))  # train[1] == label
+                    f.write("{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "1", dtw_distance))
+                    f.close()
+                    break
+                else:
+                    dist_list.append(dtw_distance)
+                if nested_loop_count > 50:
+                    break
+
+            if have_hit == False:
+                f = open("evalRQA_DTW_{}.txt".format(feature), "a")
+                result_list.append("{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0", min(dist_list)))  # train[1] == label
+                f.write("{}\t{}\t{}\t{}\n".format(file.split('/')[-1], test[1][idx], "0", min(dist_list)))
+                f.close()
+            dtw_time.append(time.time() - start)
+            print('Next File. Time: {}s'.format(dtw_time[-1]))
+        print(np.sum(dtw_time), np.mean(dtw_time))
+        ft = open("timeRQA_DTW_{}.txt".format(feature), "a")
+        ft.write("RQA_MEAN:{}\tRQA_TOTAL:{}\tDTW_MEAN:{}\tDTW_TOTAL:{}\tTOTAL_MEAN:{}\tTOTAL_TIME:{}\n".format(
+                                        np.mean(rqa_time), np.sum(rqa_time), 
+                                        np.mean(dtw_time), np.sum(dtw_time), 
+                                        np.mean(rqa_time)+np.mean(dtw_time), np.sum(rqa_time)+np.sum(dtw_time)))
+        ft.close()
+    return result_list

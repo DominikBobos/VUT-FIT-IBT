@@ -169,7 +169,7 @@ class Det:
     def plot_det(self, axes=None, *args, **kwargs):
         """  Plot DET curve """
         from matplotlib.pyplot import gca
-        import probit_scale
+        from . import probit_scale
         if axes is None: axes = gca()
         axes.set_xscale('probit', unit_scale=100)
         axes.set_yscale('probit', unit_scale=100)

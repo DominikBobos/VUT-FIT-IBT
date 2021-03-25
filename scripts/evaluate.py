@@ -3,8 +3,8 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-import third_party_scripts.pytel.det as det
-
+# import third_party_scripts.pytel.det as det
+from third_party_scripts.pytel import det, probit_scale 
 
 for system in sys.argv[1:]:
 	f = open(system, "r")
@@ -23,7 +23,7 @@ for system in sys.argv[1:]:
 		else:
 			target.append(line.split('\t')[-1][:-2])
 	f.close()
-	if system.find('DTW') != -1:
+	if system.find('DTW') != -1 or system.find('RTQ'):
 		target = np.array(target).astype(np.float64)
 		min_value = np.min(target)
 		target = min_value / target

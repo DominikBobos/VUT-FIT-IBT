@@ -552,10 +552,10 @@ def image_filter(matrix, threshold=0.7, percentile=70, variance=5):
 file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
 file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
 file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
-# file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
+file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
 # file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
-file1 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
+# file1 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 # file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 
@@ -573,7 +573,7 @@ file1 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file2 = "../../sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
 
 # file1 = "/home/dominik/Desktop/bak/dev_data/eval/eval_clear/eval_clear_phn/sw02514-A_4_90.lin"
-# file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_phn/sw04171-A_12_20__B00_ST(7.00)L(70.10)G(3.47)R(27.19)S(0.96).lin"
+# file1 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_phn/sw04171-A_12_20__B00_ST(7.00)L(70.10)G(3.47)R(27.19)S(0.96).lin"
 
 
 
@@ -619,7 +619,7 @@ feature2 = reduce_dimension(feature2)
 # gram_matrix = gram_matrix(feature1)
 # gram_matrix = image_filter(gram_matrix)
 # print(time.time() - start)
-# gram_matrix = None
+gram_matrix = None
 # import skimage.measure
 # test = skimage.measure.block_reduce(feature1, (feature1.shape[0], feature1.shape[1]), np.mean)
 # test = pooling(feature1, ksize=(feature1.shape[0]//2, feature1.shape[1]), method='mean')
@@ -637,7 +637,7 @@ print("takto dlho trva recc matrix", time.time() - start, feature1.shape)
 start = time.time()
 L_score, L_path = librosa.sequence.rqa(gram_matrix, np.inf, np.inf,
                                        knight_moves=True)
-print("spocitane idem uz len vykreslit", time.time() - start, L_path)
+print("spocitane idem uz len vykreslit", time.time() - start)
 fig, ax = plt.subplots(ncols=2)
 # librosa.display.specshow(gram_matrix, x_axis='frames', y_axis='frames', ax=ax[0])
 ax[0].imshow(gram_matrix, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
@@ -649,6 +649,28 @@ ax[1].plot(L_path[:, 1], L_path[:, 0], label='Optimal path', color='c')
 ax[1].legend()
 ax[1].label_outer()
 
+print(len(L_path))
+print("SUM", np.sum(gram_matrix[L_path])/len(L_path))
+print("RQA SUM", np.sum(L_score[L_path])/len(L_path))
+# parsed1 = parse(file1)
+# parsed2 = parse(file2)
+
+# feature1, feature2 = get_MFCC(file1, file2)
+# feature1, feature2 = load_HTK(file1, file2)
+# feature1 = reduce_dimension(feature1)
+# feature2 = reduce_dimension(feature2)
+
+
+# from fastdtw import fastdtw
+# from scipy.spatial.distance import euclidean
+# start = time.time()
+# cost_matrix1, wp1 = fastdtw(feature2, feature1[int(L_path[0][0]):int(L_path[-1][0]*5)], dist=euclidean)
+# print("Fast time:", time.time() - start, "Distance", cost_matrix1)
+
+# start = time.time()
+# cost_matrix1, wp1 = librosa.sequence.dtw(X=feature2.T, Y=feature1[int(L_path[0][0]):int(L_path[-1][0]*5)].T, metric='cosine', weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
+# print("Lib time:", time.time()-start, "Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
+# sim_list1 = similarity_new(wp1)
 # score, path = librosa.sequence.rqa(gram_matrix, np.inf, np.inf,
 #                                        knight_moves=False)
 # print(score, path)
@@ -663,7 +685,7 @@ ax[1].label_outer()
 
 
 
-# plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
+# plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=None)
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
 # plot_phn_audio(feature2, file=file2, info=[parsed2])
 
