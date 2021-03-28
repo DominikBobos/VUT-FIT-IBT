@@ -33,7 +33,14 @@ def ReduceDimension(feature):
     for frame in range(feature.shape[0]):
         for i in range(0, feature.shape[1], 3):
             reduced[frame, i // 3] = (feature[frame, i] + feature[frame, i + 1] + feature[frame, i + 2])
-    # print(reduced.shape)
+    return reduced
+
+def ReduceFrames(feature, size=5):
+    reduced = np.empty([feature.shape[0] // size, feature.shape[1]])
+
+    for frame in range(0, reduced.shape[0]):
+        for i in range(0, reduced.shape[1]):
+            reduced[frame, i] = np.mean(feature[frame*size:frame*size + size, i])
     return reduced
 
 

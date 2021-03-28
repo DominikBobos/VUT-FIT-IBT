@@ -55,7 +55,7 @@ mat10x10T = np.array([[0, -1, -2, -3, -4, -5, -6, -7, -8, -9],
 						[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]]) 
 
 
-diag_matrix= np.zeros((100, 100), np.int)
+diag_matrix= np.zeros((100, 100), np.int32)
 # np.fill_diagonal(np.fliplr(a), 1)  # flip
 np.fill_diagonal(diag_matrix, 1)  
 
@@ -89,7 +89,6 @@ mat3x3T = np.array([[0, -1, -2],
 def my_dtw(o, r):
 	cost_matrix = cdist(o, r, metric='euclidean')
 	m, n = np.shape(cost_matrix)
-
 	for i in range(m):
 		for j in range(n):
 			if ((i == 0) & (j == 0)):
@@ -99,14 +98,13 @@ def my_dtw(o, r):
 			elif (j == 0):
 				cost_matrix[i, j] = cost_matrix[i, j] + cost_matrix[i - 1, j]  # inf
 			else:
-				min_cost = np.min([cost_matrix[i, j] + cost_matrix[i - 1, j],
+				cost_matrix[i, j] = np.min([cost_matrix[i, j] + cost_matrix[i - 1, j],
 							cost_matrix[i, j] + cost_matrix[i, j - 1],
 							cost_matrix[i, j]*np.sqrt(2) + cost_matrix[i - 1, j - 1]])
-				cost_matrix[i, j] = min_cost
 	# backtracking
 	path = [m - 1], [n - 1]
 	i, j = m - 1, n - 1
-	while (True):
+	while (i != 0 or j != 0):
 		backtrack = np.argmin([cost_matrix[i - 1, j - 1], cost_matrix[i - 1, j], cost_matrix[i, j - 1]])
 		if backtrack == 1:
 			path[0].append(i - 1)
@@ -121,9 +119,7 @@ def my_dtw(o, r):
 			path[1].append(j - 1)
 			i -= 1
 			j -= 1
-		if i == 0 and j == 0:
-			break
-	np_path = np.array(path, dtype=np.int)
+	np_path = np.array(path, dtype=np.int64)
 	return cost_matrix, cost_matrix[-1, -1] / (cost_matrix.shape[0] + cost_matrix.shape[1]), np_path.T
 
 
@@ -555,7 +551,7 @@ file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#w
 file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
 # file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
-# file1 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
+# file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 # file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 
@@ -566,19 +562,21 @@ file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #
 # file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).wav"
 # file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
 # file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).wav"
-# file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).wav" #with seuclidean metrics it makes similarities hits!
+# file1 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).wav" #with seuclidean metrics it makes similarities hits!
 # file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).wav"	#with seuclidean metrics it makes similarities hits!
-# file2 = "../../sw03864-A_9_20__A02_ST(0.00)L(31.77)G(2.80)R(9.69)S(1.03).wav"
+# file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).wav"
 # file1 = "../../sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
 # file2 = "../../sw03035-B_5_20__A01_ST(0.00)L(21.96)G(4.89)R(7.72)S(1.08).wav"
+# file2 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).wav"
 
-# file1 = "/home/dominik/Desktop/bak/dev_data/eval/eval_clear/eval_clear_phn/sw02514-A_4_90.lin"
+# file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_clear/eval_clear_phn/sw02514-A_4_90.lin"
 # file1 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_phn/sw04171-A_12_20__B00_ST(7.00)L(70.10)G(3.47)R(27.19)S(0.96).lin"
 
-
-
-
-
+# file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_bnf/sw03346-B_5_14.84__B00_ST(9.00)L(60.75)G(0.73)R(25.50)S(1.04).fea"
+# file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_bnf/sw04171-A_12_20__B00_ST(7.00)L(70.10)G(3.47)R(27.19)S(0.96).fea"
+# file1 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_bnf/sw00000-A_0_0__B00_ST(0.00)L(40.97)G(-3.35)R(16.22)S(0.98).fea"
+# file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_clear/eval_clear_bnf/sw02514-A_4_90.fea"
+# file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_bnf/sw02110-B_2_120__A02_ST(0.00)L(67.43)G(3.60)R(22.01)S(1.10).fea"
 
 parsed1 = parse(file1)
 parsed2 = parse(file2)
@@ -590,30 +588,48 @@ feature2 = reduce_dimension(feature2)
 
 # import time
 # count = []
-# for i in range(10):
+# for i in range(100):
 # 	start = time.time()
 # 	cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean')	#cosine rychlejsie
 # 	count.append(time.time()-start)
-# print("euclidean", np.mean(count))
+# print("DTW", np.mean(count))
 
 
-# cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
+
+cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='cosine', subseq=False, global_constraints=False, weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
 #from fastdtw import fastdtw
 #from scipy.spatial.distance import euclidean
 #cost_matrix1, wp1 = fastdtw(feature1, feature2, dist=euclidean)
 # cost_matrix2, dist2, wp2 = my_dtw(feature1, feature2)
 # print(feature1)
-# print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
+print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
 # print("Distance", cost_matrix1)
 #cost_matrix1 = cdist(feature1, feature2, metric='euclidean')
 #wp1 = np.asarray(wp1)
 # wp1 = [list(elem) for elem in wp1]
 #print(type(wp1), np.shape(wp1) ,wp1)
 # print("My distance", dist2)
-
-# sim_list1 = similarity_new(wp1)
-# sim_list2 = similarity(wp2)
+sim_list1 = similarity_new(wp1)
+# sim_list2 = similarity_new(wp2)
 # similarity_new(wp1)
+
+
+
+# import pyximport
+# pyximport.install(setup_args={
+#     "include_dirs": np.get_include()})
+# from third_party_scripts.seg_dtw import sdtw, cy_sdtw, slndtw
+# # feature1 = np.compress([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
+# # feature2 = np.compress([True if i % 5 == 0 else False for i in range(feature2.shape[0])], feature2, axis=0)
+# import ArrayFromFeatures
+# feature1 = ArrayFromFeatures.ReduceFrames(feature1, size=10)
+# feature2 = ArrayFromFeatures.ReduceFrames(feature2, size=10)
+# path= sdtw.segmental_dtw(feature1, feature2, R=5, L=350/10, dist='euclidean')
+# # path= slndtw.sln_dtw(feature1, feature2)
+# print(path[0])
+# wp1=np.asarray(path[1][3])*10
+# wp1 = np.asarray(path[1])
+
 # import time
 # start = time.time()
 # gram_matrix = gram_matrix(feature1)
@@ -624,6 +640,7 @@ gram_matrix = None
 # test = skimage.measure.block_reduce(feature1, (feature1.shape[0], feature1.shape[1]), np.mean)
 # test = pooling(feature1, ksize=(feature1.shape[0]//2, feature1.shape[1]), method='mean')
 
+"""
 feature1 = np.compress([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
 
 # chroma_stack = librosa.feature.stack_memory(feature1.T, n_steps=10, delay=3)
@@ -652,6 +669,8 @@ ax[1].label_outer()
 print(len(L_path))
 print("SUM", np.sum(gram_matrix[L_path])/len(L_path))
 print("RQA SUM", np.sum(L_score[L_path])/len(L_path))
+
+"""
 # parsed1 = parse(file1)
 # parsed2 = parse(file2)
 
@@ -684,8 +703,8 @@ print("RQA SUM", np.sum(L_score[L_path])/len(L_path))
 # ax[1].label_outer()
 
 
-
-# plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=None)
+# sim_list1=None
+plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
 # plot_phn_audio(feature2, file=file2, info=[parsed2])
 
