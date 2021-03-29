@@ -95,12 +95,12 @@ if __name__ == "__main__":
         result_list = RQAsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, 
                                                         frame_reduction=frame_reduction, reduce_dimension=True)
-    if system == 'rqa_dtw_unknown' or '2pass_dtw_unknown':
+    if system == 'rqa_dtw_unknown' or system == '2pass_dtw_unknown':
         result_list = RQAsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, 
                                                         frame_reduction=frame_reduction, reduce_dimension=True, 
                                                         second_pass=True)
-    if system == 'rqa_sdtw_unknown' or '2pass_sdtw_unknown':
+    if system == 'rqa_sdtw_unknown' or system == '2pass_sdtw_unknown':
         result_list = RQAsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, 
                                                         frame_reduction=frame_reduction, reduce_dimension=True, 
