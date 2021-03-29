@@ -7,11 +7,19 @@ import numpy as np
 
 import DTWsystem
 
+
+def CheckPositive(value):
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError("{} is an invalid positive int value for argument --frame-reduction".format(value))
+    return ivalue
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--src")
 parser.add_argument("--feature", help="Selected features to use. (mfcc, posteriors, bottleneck, string, lattice)")
 parser.add_argument("-v", "--verbose", action="store_true")
 parser.add_argument("--system", required=True)
+parser.add_argument("--frame-reduction", type=CheckPositive)
 arguments = parser.parse_args()
 
 features = ['mfcc', 'posteriors', 'bottleneck', 'string', 'lattice']
@@ -78,11 +86,21 @@ def LabelFiles(src, feature, exact_path=None, label=None):
 if __name__ == "__main__":
     system = arguments.system.lower()
     train_files, train_labels, test_files, test_labels = LabelFiles(src, feature)
+    frame_reduction = arguments.frame_reduction if arguments.frame_reduction is not None else 1
     if system == 'basedtw':
         result_list = DTWsystem.BaseDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, reduce_dimension=True)
-        print(result_list)
-    if system == 'arenjansen' or system == 'rqaunknown':
-        result_list = DTWsystem.RQAunknown([train_files, train_labels], [test_files, test_labels],
+    if system == 'arenjansen' or system == 'rqa_unknown':
+        result_list = DTWsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, 
-                                                        frame_reduction=10, reduce_dimension=True)
+                                                        frame_reduction=frame_reduction, reduce_dimension=True)
+    if system == 'rqa_dtw_unknown' or '2pass_dtw_unknown':
+        result_list = DTWsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
+                                                        feature=feature, 
+                                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                                        second_pass=True)
+    if system == 'rqa_sdtw_unknown' or '2pass_sdtw_unknown':
+        result_list = DTWsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
+                                                        feature=feature, 
+                                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                                        second_pass=True, sdtw=True)

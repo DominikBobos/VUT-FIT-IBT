@@ -48,6 +48,11 @@ def Play(file, start=0.0, length=5.0):
 	wave_file.close()
 
 
+def FramesToSeconds(frames, frame_reduction):
+	start = frames[0][0] * frame_reduction
+	end = frames[-1][0] * frame_reduction
+	return start, end, end - start 
+
 
 def Playback(files=None, sim_list=None, file_list=None, file=None):
 	if file is not None:
@@ -80,10 +85,9 @@ def Playback(files=None, sim_list=None, file_list=None, file=None):
 				continue
 			file = GetAudioFile(element[0])
 			frame_reduction = element[2]
-			start = element[1][0][0] * frame_reduction 
-			end = element[1][-1][0] * frame_reduction 
+			start, end, length = FramesToSeconds(element[1], frame_reduction)
 			print("Playing:{} Frames:{}-{}".format(file.split('/')[-1], start, end))
-			length = (end - start) / 100
+			length /= 100
 			start /= 100
 			Play(file, start, length) 
 			beep(sound='coin')

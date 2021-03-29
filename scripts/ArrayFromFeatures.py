@@ -1,7 +1,7 @@
 import numpy as np
 from python_speech_features import mfcc
 from scipy.io import wavfile
-
+import pickle
 from HTK import HTKFile
 
 
@@ -29,19 +29,41 @@ def LoadHTK(file, verbose=False):
 
 def ReduceDimension(feature):
     reduced = np.empty([feature.shape[0], feature.shape[1] // 3])
-
     for frame in range(feature.shape[0]):
         for i in range(0, feature.shape[1], 3):
             reduced[frame, i // 3] = (feature[frame, i] + feature[frame, i + 1] + feature[frame, i + 2])
     return reduced
 
+
 def ReduceFrames(feature, size=5):
     reduced = np.empty([feature.shape[0] // size, feature.shape[1]])
-
     for frame in range(0, reduced.shape[0]):
         for i in range(0, reduced.shape[1]):
             reduced[frame, i] = np.mean(feature[frame*size:frame*size + size, i])
     return reduced
+
+
+def CompressFrames(feature, size=5):
+    return np.compress([True if i % size == 0 else False for i in range(feature.shape[0])], feature, axis=0)
+
+
+def OpenPickle(path):
+    pkl_list = []
+    try:
+        open_file = open(path, "rb")
+        pkl_list = pickle.load(open_file)
+        open_file.close()
+        print("{} file exist. Loading data from pickle file.".format(path))
+    except IOError:
+        print("{} file not found. No data will be retrieved.".format(path))
+    return pkl_list
+
+
+def SavePickle(path, pkl_list):
+    open_file = open(path, "wb")
+    pickle.dump(pkl_list, open_file)
+    open_file.close()
+    print(path, "file saved successfully.")
 
 
 def Parse(filename):
