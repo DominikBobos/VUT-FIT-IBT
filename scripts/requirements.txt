@@ -1,0 +1,17 @@
+beepy==1.0.7
+scipy==1.4.1
+fastdtw==0.3.4
+pydub==0.24.1
+numpy==1.20.1
+librosa==0.8.0
+h5py==2.10.0
+python_speech_features==0.6
+Cython==0.29.22
+webrtcvad==2.0.10
+numexpr==2.7.3
+dtw==1.4.0
+matplotlib==3.3.2
+ipython==7.22.0
+pyaudio==0.2.11
+scikit_learn==0.24.1
+scoring==0.0.9

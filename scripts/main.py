@@ -92,16 +92,36 @@ if __name__ == "__main__":
         result_list = DTWsystem.BaseDtwUnknown([train_files, train_labels], [test_files, test_labels],
                                                         feature=feature, reduce_dimension=True)
     if system == 'arenjansen' or system == 'rqa_unknown':
-        result_list = RQAsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
-                                                        feature=feature, 
-                                                        frame_reduction=frame_reduction, reduce_dimension=True)
+        result_list = RQAsystem.RqaDtw([train_files, train_labels], [test_files, test_labels],
+                                        feature=feature, 
+                                        frame_reduction=frame_reduction, reduce_dimension=True)
     if system == 'rqa_dtw_unknown' or system == '2pass_dtw_unknown':
-        result_list = RQAsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
-                                                        feature=feature, 
-                                                        frame_reduction=frame_reduction, reduce_dimension=True, 
-                                                        second_pass=True)
+        result_list = RQAsystem.RqaDtw([train_files, train_labels], [test_files, test_labels],
+                                        feature=feature, 
+                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                        second_pass=True)
     if system == 'rqa_sdtw_unknown' or system == '2pass_sdtw_unknown':
-        result_list = RQAsystem.RqaDtwUnknown([train_files, train_labels], [test_files, test_labels],
-                                                        feature=feature, 
-                                                        frame_reduction=frame_reduction, reduce_dimension=True, 
-                                                        second_pass=True, sdtw=True)
+        result_list = RQAsystem.RqaDtw([train_files, train_labels], [test_files, test_labels],
+                                        feature=feature, 
+                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                        second_pass=True, sdtw=True)
+    if system == 'rqacluster_dtw_unknown' or system == '2pass_cluster_dtw_unknown':
+        result_list = RQAsystem.RqaDtw([train_files, train_labels], [test_files, test_labels],
+                                        feature=feature, 
+                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                        second_pass=True, cluster=True, metric='euclidean')
+    if system == 'rqacluster_sdtw_unknown' or system == '2pass_cluster_sdtw_unknown':
+        result_list = RQAsystem.RqaDtw([train_files, train_labels], [test_files, test_labels],
+                                        feature=feature, 
+                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                        second_pass=True, sdtw=True, cluster=True, metric='cosine')
+    if system == 'cluster_dtw_known':
+        result_list = RQAsystem.RqaDtw([train_files, train_labels], [test_files, test_labels],
+                                        feature=feature, 
+                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                        second_pass=True, sdtw=False, cluster=True, metric='cosine', known=True)
+    if system == 'cluster_sdtw_known':
+        result_list = RQAsystem.RqaDtw([train_files, train_labels], [test_files, test_labels],
+                                        feature=feature, 
+                                        frame_reduction=frame_reduction, reduce_dimension=True, 
+                                        second_pass=True, sdtw=True, cluster=True, metric='cosine', known=True)

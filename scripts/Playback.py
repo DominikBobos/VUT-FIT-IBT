@@ -48,24 +48,27 @@ def Play(file, start=0.0, length=5.0):
 	wave_file.close()
 
 
-def FramesToSeconds(frames, frame_reduction):
+def FramesToHSeconds(frames, frame_reduction):
+	# normalize frames according to original audio and 
+	# returned frames are in hundredths of a second
 	start = frames[0][0] * frame_reduction
 	end = frames[-1][0] * frame_reduction
 	return start, end, end - start 
 
 
-def Playback(files=None, sim_list=None, file_list=None, file=None):
+def Playback(files=None, sim_list=None, file_list=None, file=None,  FA_only=False):
 	if file is not None:
 		file = GetAudioFile(file)
-		print("Playing:{}".format(file.split('/')[-1]))
+		
 		if sim_list is not None:
+			print("Playing:{} [{:.2f}-{:.2f}]".format(file.split('/')[-1], sim_list[0], sim_list[0]+sim_list[1]))
 			Play(file, sim_list[0], sim_list[1])
 		else:
+			print("Playing:{}".format(file.split('/')[-1]))
 			Play(file)
 
 	if file_list is not None:
-		FA_only = True
-		frames_threshold = 450
+		frames_threshold = 200
 		try:
 			open_file = open(file_list, "rb")
 			pkl_list = pickle.load(open_file)
@@ -78,17 +81,19 @@ def Playback(files=None, sim_list=None, file_list=None, file=None):
 				print("Skipping {}, no frames to play".format(element[0].split('/')[-1]))
 				continue
 			if FA_only and len(element[0].split('/')[-1]) > 30: 
-				print("Skipping {}, Mode 'FA only's is on. Hits are not played".format(element[0].split('/')[-1]))
+				print("Skipping {}, Mode 'FA only' is on. Hits are not played".format(element[0].split('/')[-1]))
 				continue
 			if FA_only and len(element[1])*element[2] < frames_threshold:
 				print("Skipping {}, Mode 'FA only' is on. Short FA are not played. (shorter than {})".format(element[0].split('/')[-1], frames_threshold))
 				continue
 			file = GetAudioFile(element[0])
 			frame_reduction = element[2]
-			start, end, length = FramesToSeconds(element[1], frame_reduction)
+			start, end, length = FramesToHSeconds(element[1], frame_reduction)
 			print("Playing:{} Frames:{}-{}".format(file.split('/')[-1], start, end))
 			length /= 100
 			start /= 100
+			import SpeechDetection
+			print("Sample contains speech:", SpeechDetection.SpeechInAudio(element[0], start, end/100))
 			Play(file, start, length) 
 			beep(sound='coin')
 
@@ -107,9 +112,13 @@ def Playback(files=None, sim_list=None, file_list=None, file=None):
 
 if __name__ == "__main__":
 	if sys.argv[1][-3:] == "pkl":
-		Playback(file_list=sys.argv[1])
+		if len(sys.argv) == 2:
+			Playback(file_list=sys.argv[1])
+		else:
+			Playback(file_list=sys.argv[1], FA_only=True if sys.argv[2].lower() == "true" else False)
 	else:
 		if len(sys.argv) == 4:
 			Playback(file=sys.argv[1], sim_list=[float(sys.argv[2]), float(sys.argv[3])])
 		else:
 			Playback(file=sys.argv[1])
+			

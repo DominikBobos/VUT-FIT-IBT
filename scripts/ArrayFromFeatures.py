@@ -27,6 +27,29 @@ def LoadHTK(file, verbose=False):
     return feature
 
 
+def LoadString(file):
+    f = open(file, "r")
+    lines = f.readlines()
+    frames = []
+    lengths = []
+    string = ''
+    for line in lines:
+        # [0] - start 
+        # [1] - end
+        # [2] - phoneme
+        # [3] - length # in hundredths of a second
+        split_line = line.split(' ')
+        start = int(split_line[0][:-5] if split_line[0] != '0' else 0)
+        end = int(split_line[1][:-5])
+        phoneme = split_line[2] if split_line[2] != 'pau' else " "  # convert pause to space
+        length = float(split_line[3][:-2])
+        frames.append([start, end])
+        string += phoneme
+        lengths.append(length)
+    f.close()
+    return [frames, lengths, string]
+
+
 def ReduceDimension(feature):
     reduced = np.empty([feature.shape[0], feature.shape[1] // 3])
     for frame in range(feature.shape[0]):
@@ -47,6 +70,74 @@ def CompressFrames(feature, size=5):
     return np.compress([True if i % size == 0 else False for i in range(feature.shape[0])], feature, axis=0)
 
 
+def GetOneFolderUp(file):
+    processed = '' 
+    folders = file.split('/')
+    for idx, folder in enumerate(folders):
+        if idx == len(folders)-2: #the last but one item (folder to get away from)
+            continue
+        if idx == len(folders)-1: #the last one (file)
+            processed += folder #filename
+            continue
+        processed += folder + '/'
+    return processed
+
+def GetOneFolderDeep(file, folder_extension):
+    processed = '' 
+    folders = file.split('/')
+    for idx, folder in enumerate(folders):
+        if idx == len(folders)-2: #the last but one item (folder to append deeper folder)
+            processed += folder + '/' + folder + folder_extension + '/'
+            continue
+        if idx == len(folders)-1: #the last one (file)
+            processed += folder #filename
+            continue
+        processed += folder + '/'
+    return processed
+
+
+def Get2RigthFolder(file, folder_extension):
+    processed = '' 
+    folders = file.split('/')
+    for idx, folder in enumerate(folders):
+        if idx == len(folders)-2: #the last but one item (folder to rename to right folder)
+            processed += folder[:-4] + folder_extension + '/' 
+            continue
+        if idx == len(folders)-1: #the last one (file)
+            processed += folder #filename
+            continue
+        processed += folder + '/'
+    return processed
+
+
+def RightExtensionFile(file, feature):
+    extension = ''
+    folder_extension = ''
+    if feature.lower() == 'mfcc':
+        extension = '.wav'
+        folder_extension = ''
+    elif feature.lower() == 'posteriors':
+        extension = '.lin'
+        folder_extension = '_phn' 
+    elif feature.lower() == 'bottleneck':
+        extension = '.fea'
+        folder_extension = '_bnf'
+    elif feature.lower() == 'string':
+        extension = '.txt'
+        folder_extension = '_str'
+    else:
+        raise Exception("Unsupported feature '{}'".format(feature))
+
+    if file[-4:] == extension:
+        return file
+    elif file[-4:] == '.wav':
+        return GetOneFolderDeep(file, folder_extension)[:-4] + extension 
+    elif extension == '.wav':
+        return GetOneFolderUp(file)[:-4] + extension  # from wav folder to the extension folder
+    else:
+        return Get2RigthFolder(file, folder_extension)[:-4] + extension  # renaming file folder
+
+
 def OpenPickle(path):
     pkl_list = []
     try:
@@ -55,7 +146,7 @@ def OpenPickle(path):
         open_file.close()
         print("{} file exist. Loading data from pickle file.".format(path))
     except IOError:
-        print("{} file not found. No data will be retrieved.".format(path))
+        raise("{} file not found. No data will be retrieved.".format(path))
     return pkl_list
 
 
@@ -110,3 +201,8 @@ def GetArray(file, feature, reduce_dimension):
     if feature == 'bottleneck':
         file_arr = LoadHTK(file)
     return file_arr
+
+if __name__ == '__main__':
+    pass
+    import sys
+    print(LoadString(sys.argv[1]))

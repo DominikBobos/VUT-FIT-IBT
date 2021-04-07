@@ -201,28 +201,107 @@ def InitCheckShuffle(train, test):
     return train, train_nested, test, test_nested
 
 
+def GetThreshold(system, feature, metric):
+    if system == 'basedtw':
+        hit_threshold = 0.0
+        loop_count = 0
+        if feature not in ['mfcc', 'posteriors', 'bottleneck']:
+            raise Exception("For BaseDTW system use only mfcc, posteriors or bottleneck feature vectors, not {}".format(feature))
+        if feature == 'mfcc':
+            hit_threshold = 35.0
+            loop_count = 49
+        if feature == 'posteriors':
+            hit_threshold = 4.0
+            loop_count = 49
+        if feature == 'bottleneck':
+            hit_threshold = 1.25
+            loop_count = 99
+        return hit_threshold, loop_count
+
+    if system == 'arenjansen' or system == 'rqa_unknown':
+        if feature not in ['mfcc', 'posteriors', 'bottleneck']:
+            raise Exception("For BaseDTW system use only mfcc, posteriors or bottleneck feature vectors, not {}".format(feature))
+        rqa_threshold = 500.0
+        hit_threshold = 50  # don't care
+        loop_count = 50     # don't care
+        return rqa_threshold, hit_threshold, loop_count
+
+    if system == 'rqa_dtw_unknown' or system == '2pass_dtw_unknown':
+        if feature not in ['mfcc', 'posteriors', 'bottleneck']:
+            raise Exception("For BaseDTW system use only mfcc, posteriors or bottleneck feature vectors, not {}".format(feature))
+        rqa_threshold = 500.0
+        loop_count = 50 
+        if feature == 'mfcc':
+            hit_threshold = 60.0
+        if feature == 'posteriors':
+            hit_threshold = 9.0
+        if feature == 'bottleneck':
+            hit_threshold = 1.25
+        return rqa_threshold, hit_threshold, loop_count
+
+    if system == 'rqa_sdtw_unknown' or system == '2pass_sdtw_unknown':
+        if feature not in ['mfcc', 'posteriors', 'bottleneck']:
+            raise Exception("For RQA/DTW system use only mfcc, posteriors or bottleneck feature vectors, not {}".format(feature))
+        rqa_threshold = 500.0
+        loop_count = 50 
+        if feature == 'mfcc':
+            hit_threshold = 0.004
+        if feature == 'posteriors':
+            hit_threshold = 0.29
+        if feature == 'bottleneck':
+            hit_threshold = 0.28
+        return rqa_threshold, hit_threshold, loop_count
+
+    if system == 'rqa_cluster':
+        if feature not in ['mfcc', 'bottleneck', 'posteriors']:
+            raise Exception('{} is unsupported feature for clustering. Use MFCC or bottleneck or posteriors'.format(feature.upper()))
+        if feature == 'mfcc':
+            if metric == 'euclidean':
+                hit_threshold = 35.0
+            else:
+                hit_threshold = 0.004
+        if feature == 'posteriors':
+            if metric == 'euclidean':
+                hit_threshold = 10.0
+            else:
+                hit_threshold = 0.29
+        if feature == 'bottleneck':
+            if metric == 'euclidean': 
+                hit_threshold = 1.25
+            else:
+                hit_threshold = 0.29
+        return hit_threshold
+    if system == 'rqa_cluster_system':
+        if feature not in ['mfcc', 'bottleneck', 'posteriors']:
+            raise Exception('{} is unsupported feature for clustering. Use MFCC or bottleneck or posteriors'.format(feature.upper()))
+        if feature == 'mfcc':
+            if metric == 'euclidean':
+                hit_threshold = 35.0
+            else:
+                hit_threshold = 0.0025
+        if feature == 'posteriors':
+            if metric == 'euclidean':
+                hit_threshold = 10.0
+            else:
+                hit_threshold = 0.29
+        if feature == 'bottleneck':
+            if metric == 'euclidean': 
+                hit_threshold = 1.25
+            else:
+                hit_threshold = 0.20
+        return hit_threshold
+
+
 def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True):
     train, train_nested, test, test_nested = InitCheckShuffle(train, test)
     result_list = []
     hits_count = 0
     threshold = [0.9, 1.1]
-    hit_threshold = 0.0
-    loop_count = 0
-    if feature not in ['mfcc', 'posteriors', 'bottleneck']:
-        raise Exception("For BaseDTW system use only mfcc, posteriors or bottleneck feature vectors")
-    if feature == 'mfcc':
-        hit_threshold = 35.0
-        loop_count = 49
-    if feature == 'posteriors':
-        hit_threshold = 4.0
-        loop_count = 49
-    if feature == 'bottleneck':
-        hit_threshold = 1.25
-        loop_count = 99
+    hit_threshold, loop_count = GetThreshold('basedtw', feature, 'euclidean')
 
     one_round = []
     for idx, file in enumerate(test[0]):  # train[0] == list of files
-        start = time.time()
+        start_time = time.time()
         parsed_file = ArrayFromFeatures.Parse(file)
         file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
         score_list = []
@@ -282,7 +361,7 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
                 result_list.append(append_string)  # train[1] == label
                 f.write(append_string)
         f.close()
-        one_round.append(time.time() - start)
+        one_round.append(time.time() - start_time)
         print('Next File. Time: {}s'.format(one_round[-1]))
     ft = open("timeBaseDTW_{}.txt".format(feature), "a")
     ft.write("MEAN:{}\tTOTAL:{}\n".format(np.mean(one_round), np.sum(one_round)))
@@ -290,12 +369,11 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
     return result_list
 
 
-def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduce_dimension, loop_count, rqa_time,
-                  sdtw):
+def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduce_dimension, loop_count, rqa_time, sdtw):
     dtw_time = []
     result_list = []
     for idx, file in enumerate(data[0]):
-        start = time.time()
+        start_time = time.time()
         parsed_file = ArrayFromFeatures.Parse(file)
         file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
         file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
@@ -320,17 +398,15 @@ def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduc
             file_nested_array = ArrayFromFeatures.GetArray(rqa_item[0], feature, reduce_dimension)
             file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
             # file_nested_array = ArrayFromFeatures.CompressFrames(file_nested_array, size=frame_reduction)
+            start = int(rqa_item[1][0][0]) * rqa_item[2] // frame_reduction 
+            end = int(rqa_item[1][-1][0]) * rqa_item[2] // frame_reduction
             if sdtw:
-                path = SegmentalDTW(file_nested_array[int(rqa_item[1][0][0]) * rqa_item[2] // frame_reduction:int(
-                    rqa_item[1][-1][0]) * rqa_item[2] // frame_reduction], file_array, R=5, L=300 / frame_reduction,
-                                    dist='cosine')
+                path = SegmentalDTW(file_nested_array[start:end], file_array, R=5, L=300 / frame_reduction, dist='cosine')
                 # wp = np.asarray(path[1][3])*frame_reduction   # not necessary, uncomment when want to know the warping path
                 dtw_distance = path[0]
             else:
                 cost_matrix, wp = librosa.sequence.dtw(X=file_array.T,
-                                                       Y=file_nested_array[int(rqa_item[1][0][0]) * rqa_item[
-                                                           2] // frame_reduction:int(rqa_item[1][-1][0]) * rqa_item[
-                                                           2] // frame_reduction].T,
+                                                       Y=file_nested_array[start:end].T,
                                                        metric='euclidean',
                                                        weights_mul=np.array([np.sqrt([2]), 1, 1],
                                                                             dtype=np.float64))  # cosine rychlejsie
@@ -360,10 +436,98 @@ def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduc
             result_list.append(append_string)  # train[1] == label
             f.write(append_string)
             f.close()
-        dtw_time.append(time.time() - start)
+        dtw_time.append(time.time() - start_time)
         print('Next File. Time: {}s'.format(dtw_time[-1]))
     print(np.sum(dtw_time), np.mean(dtw_time))
     ft = open("timeRQA_{}_unknown_{}.txt".format("SDTW" if sdtw == True else "DTW", feature), "a")
+    ft.write("RQA_MEAN:{}\tRQA_TOTAL:{}\tDTW_MEAN:{}\tDTW_TOTAL:{}\tTOTAL_MEAN:{}\tTOTAL_TIME:{}\n".format(
+        np.mean(rqa_time), np.sum(rqa_time),
+        np.mean(dtw_time), np.sum(dtw_time),
+        np.mean(rqa_time) + np.mean(dtw_time), np.sum(rqa_time) + np.sum(dtw_time)))
+    ft.close()
+    return result_list
+
+
+def SecondPassCluster(data, clust_list, hit_threshold, frame_reduction, feature, reduce_dimension, rqa_time, metric, sdtw, known):
+    dtw_time = []
+    result_list = []
+    for idx, file in enumerate(data[0]):
+        start_time = time.time()
+        parsed_file = ArrayFromFeatures.Parse(file)
+        file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+        file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+        # file_array = ArrayFromFeatures.CompressFrames(file_array, size=frame_reduction)
+
+        if float(parsed_file[-1]) < 3.0:  # skipping samples of total duration shorter than 3seconds
+            print("Skipping", file.split('/')[-1], data[1][idx],
+                  "because the total duration {} is less than 3.0 seconds".format(parsed_file[-1]))
+            continue
+        dist_list = []
+        have_hit = False
+        nested_loop_count = 0
+        # loop through candidates-> queries to search in 'file' 
+        for idx_nested, cluster_nested in enumerate(clust_list):
+            have_hit = False
+            for idx_file, file_nested in enumerate(cluster_nested):
+                if idx_file > 1:   # go to next when first 3 are compared
+                    break
+                if file[-4:] != file_nested[0][-4:]:   # extension comparision
+                    file_nested[0] = ArrayFromFeatures.RightExtensionFile(file_nested[0], feature) 
+                if file.split('/')[-1] == file_nested[0].split('/')[-1]:
+                    continue
+                parsed_file_nested = ArrayFromFeatures.Parse(file_nested[0])
+                file_nested_array = ArrayFromFeatures.GetArray(file_nested[0], feature, reduce_dimension)
+                file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+                start = int(file_nested[1][0][0]) * file_nested[2] // frame_reduction 
+                end = int(file_nested[1][-1][0]) * file_nested[2] // frame_reduction
+                if sdtw:
+                    path = SegmentalDTW(file_nested_array[start:end], 
+                                        file_array, 
+                                        R=5, 
+                                        L=200/frame_reduction, 
+                                        dist=metric)
+                    # wp = np.asarray(path[1][3])*frame_reduction   # not necessary, uncomment when want to know the warping path
+                    dtw_distance = path[0]
+                    if feature == 'posteriors' and dtw_distance < 0.01:
+                        dtw_distance *= 100 # normalization for weird cases
+                else:
+                    cost_matrix, wp = librosa.sequence.dtw(X=file_array.T,
+                                                       Y=file_nested_array[start:end].T,
+                                                       metric='euclidean',
+                                                       weights_mul=np.array([np.sqrt([2]), 1, 1],
+                                                       dtype=np.float64))  # cosine rychlejsie
+                    dtw_distance = cost_matrix[wp[-1, 0], wp[-1, 1]]
+                if dtw_distance is None:
+                    continue
+                print("Processing {}[{}] ({}/{}) with {}[{}] ({}/{}) cluster number [{}]. -> Distance={:.4f}".format(
+                    parsed_file[0], "0" if data[1][idx] == 0 else "1:" + parsed_file[3], idx + 1, len(data[0]),
+                    parsed_file_nested[0], "0" if len(parsed_file_nested) < 10 else "1:" + parsed_file_nested[3],
+                    idx_file + 1, len(cluster_nested) if len(cluster_nested) < 2 else 2, idx_nested, dtw_distance))
+                if dtw_distance < hit_threshold:
+                    have_hit = True
+                    f = open("evalRQAclustered_{}_{}_{}.txt".format("SDTW" if sdtw == True else "DTW", "known" if known else "unknown", feature), "a")
+                    append_string = "{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], data[1][idx], "1", idx_nested, dtw_distance)
+                    result_list.append(append_string)  # train[1] == label
+                    f.write(append_string)
+                    f.close()
+                    # if wanted to add to cluster
+                    # clust_list[idx_nested].append([cluster[1][0], cluster[1][1], cluster[1][2], 
+                    #                     dtw_distance, len(cluster[1][1])*cluster[1][2]])
+                    # clust_list[idx_nested] = sorted(clust_list[idx_nested], key = lambda x: x[-1]) # sort with new item
+                    break
+                dist_list.append(dtw_distance)
+            if have_hit:
+                break
+        if have_hit == False:
+            f = open("evalRQAclustered_{}_{}_{}.txt".format("SDTW" if sdtw == True else "DTW", "known" if known else "unknown", feature), "a")
+            append_string = "{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], data[1][idx], "0", "XX", min(dist_list))
+            result_list.append(append_string)  # train[1] == label
+            f.write(append_string)
+            f.close()
+        dtw_time.append(time.time() - start_time)
+        print('Next File. Time: {}s'.format(dtw_time[-1]))
+    print(np.sum(dtw_time), np.mean(dtw_time))
+    ft = open("timeRQAclustered_{}_{}_{}.txt".format("SDTW" if sdtw == True else "DTW", "known" if known else "unknown", feature), "a")
     ft.write("RQA_MEAN:{}\tRQA_TOTAL:{}\tDTW_MEAN:{}\tDTW_TOTAL:{}\tTOTAL_MEAN:{}\tTOTAL_TIME:{}\n".format(
         np.mean(rqa_time), np.sum(rqa_time),
         np.mean(dtw_time), np.sum(dtw_time),

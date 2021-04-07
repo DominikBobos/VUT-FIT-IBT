@@ -230,8 +230,8 @@ def plot(feature1=None, feature2=None, dist=None, wp=None, sim_list=None, dtw_na
 			fig.colorbar(cax, ax=ax, label="distance cost")
 		ax.set_xlabel("File 2 Time [s]")
 		ax.set_ylabel("File 1 Time [s]")
-		fig.suptitle(dtw_name + ' DTW alignment path')
-		# ax.set_title("Distance: {0:.6f}".format(dist[wp[-1, 0], wp[-1, 1]]))
+		# fig.suptitle(dtw_name + ' DTW alignment path')
+		ax.set_title("DTW distance: {0:.6f}".format(dist[wp[-1, 0], wp[-1, 1]]))
 		
 		ax.plot(wp[:, 1], wp[:, 0], label='Optimal path',  color='coral', linewidth=2.0)
 		if sim_list is not None:
@@ -578,13 +578,16 @@ file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #
 # file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_clear/eval_clear_bnf/sw02514-A_4_90.fea"
 # file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_bnf/sw02110-B_2_120__A02_ST(0.00)L(67.43)G(3.60)R(22.01)S(1.10).fea"
 
-parsed1 = parse(file1)
-parsed2 = parse(file2)
+file2= "/home/dominik/Desktop/bak/TZ/BUTstrategically.wav"
+file1= "/home/dominik/Desktop/bak/TZ/BUTresearch2.wav"
 
-# feature1, feature2 = get_MFCC(file1, file2)
-feature1, feature2 = load_HTK(file1, file2)
-feature1 = reduce_dimension(feature1)
-feature2 = reduce_dimension(feature2)
+# parsed1 = parse(file1)
+# parsed2 = parse(file2)
+
+feature1, feature2 = get_MFCC(file1, file2)
+# feature1, feature2 = load_HTK(file1, file2)
+# feature1 = reduce_dimension(feature1)
+# feature2 = reduce_dimension(feature2)
 
 # import time
 # count = []
@@ -596,14 +599,14 @@ feature2 = reduce_dimension(feature2)
 
 
 
-cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='cosine', subseq=False, global_constraints=False, weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
-#from fastdtw import fastdtw
-#from scipy.spatial.distance import euclidean
-#cost_matrix1, wp1 = fastdtw(feature1, feature2, dist=euclidean)
+cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', subseq=False, global_constraints=False, weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
+# from fastdtw import fastdtw
+# from scipy.spatial.distance import euclidean
+# cost_matrix1, wp1 = fastdtw(feature1, feature2, dist=euclidean)
 # cost_matrix2, dist2, wp2 = my_dtw(feature1, feature2)
 # print(feature1)
 print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
-# print("Distance", cost_matrix1)
+# print("Distance", cost_matrix1/(feature1.shape[0]+feature2.shape[0]))
 #cost_matrix1 = cdist(feature1, feature2, metric='euclidean')
 #wp1 = np.asarray(wp1)
 # wp1 = [list(elem) for elem in wp1]
@@ -615,27 +618,27 @@ sim_list1 = similarity_new(wp1)
 
 
 
-# import pyximport
-# pyximport.install(setup_args={
-#     "include_dirs": np.get_include()})
-# from third_party_scripts.seg_dtw import sdtw, cy_sdtw, slndtw
+import pyximport
+pyximport.install(setup_args={
+    "include_dirs": np.get_include()})
+from third_party_scripts.seg_dtw import sdtw, cy_sdtw, slndtw
 # # feature1 = np.compress([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
 # # feature2 = np.compress([True if i % 5 == 0 else False for i in range(feature2.shape[0])], feature2, axis=0)
 # import ArrayFromFeatures
 # feature1 = ArrayFromFeatures.ReduceFrames(feature1, size=10)
 # feature2 = ArrayFromFeatures.ReduceFrames(feature2, size=10)
-# path= sdtw.segmental_dtw(feature1, feature2, R=5, L=350/10, dist='euclidean')
+# path= sdtw.segmental_dtw(feature1, feature2, R=4, L=200, dist='euclidean')
 # # path= slndtw.sln_dtw(feature1, feature2)
-# print(path[0])
-# wp1=np.asarray(path[1][3])*10
+# print("Distance", path[0])
+# wp1=np.asarray(path[1][3])
 # wp1 = np.asarray(path[1])
 
 # import time
 # start = time.time()
-# gram_matrix = gram_matrix(feature1)
-# gram_matrix = image_filter(gram_matrix)
+gram_matrix = gram_matrix(feature1)
+gram_matrix = image_filter(gram_matrix)
 # print(time.time() - start)
-gram_matrix = None
+# gram_matrix = None
 # import skimage.measure
 # test = skimage.measure.block_reduce(feature1, (feature1.shape[0], feature1.shape[1]), np.mean)
 # test = pooling(feature1, ksize=(feature1.shape[0]//2, feature1.shape[1]), method='mean')
@@ -703,7 +706,8 @@ print("RQA SUM", np.sum(L_score[L_path])/len(L_path))
 # ax[1].label_outer()
 
 
-# sim_list1=None
+sim_list1=None 
+gram_matrix=None
 plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
 # plot_phn_audio(feature2, file=file2, info=[parsed2])

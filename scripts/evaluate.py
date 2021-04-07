@@ -23,7 +23,7 @@ for system in sys.argv[1:]:
 		else:
 			target.append(line.split('\t')[-1][:-2])
 	f.close()
-	if system.find('DTW') != -1 or system.find('RTQ'):
+	if system.find('evalRQA_SDTW_unknown_posteriors') == -1 and (system.find('DTW') != -1 or system.find('RQA') != -1):
 		target = np.array(target).astype(np.float64)
 		min_value = np.min(target)
 		target = min_value / target
