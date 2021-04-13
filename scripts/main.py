@@ -7,6 +7,7 @@ import numpy as np
 
 import DTWsystem
 import RQAsystem
+import FuzzyStringSystem
 
 
 def CheckPositive(value):
@@ -17,13 +18,15 @@ def CheckPositive(value):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--src")
-parser.add_argument("--feature", help="Features to use. (mfcc, posteriors, bottleneck, string, lattice)")
+parser.add_argument("--feature", help="Features to use. (mfcc, posteriors, bottleneck, string)")
+parser.add_argument("--cluster-feature", help="Features to use. (mfcc, posteriors, bottleneck)")
 parser.add_argument("-v", "--verbose", action="store_true")
 parser.add_argument("--system", required=True, help="Available systems: basedtw, arenjansen/rqa_unknown, rqa_dtw_unknown/2pass_dtw_unknown, rqa_sdtw_unknown/2pass_sdtw_unknown,")
 parser.add_argument("--frame-reduction", type=CheckPositive, help="Downsampling the the feature vector, averaging given N-frames")
 arguments = parser.parse_args()
 
-features = ['mfcc', 'posteriors', 'bottleneck', 'string', 'lattice']
+features = ['mfcc', 'posteriors', 'bottleneck', 'string']
+cluster_features = ['mfcc', 'posteriors', 'bottleneck']
 
 if not arguments.src:
     if arguments.verbose:
@@ -39,9 +42,18 @@ if arguments.feature.lower() in features:
         print("The {} features were chosen.".format(arguments.feature))
     feature = arguments.feature
 else:
-    if arguments.verbose:
-        print("MFCC features were chosen implicitly.")
+    print("MFCC features were chosen implicitly.")
     feature = 'mfcc'
+
+if arguments.cluster_feature in features:
+    if arguments.verbose:
+        print("The {} cluster features were chosen.".format(arguments.cluster_feature))
+    cluster_feature = arguments.cluster_feature
+else:    
+    print("MFCC features were chosen implicitly.")
+    cluster_feature = 'mfcc'
+
+
 
 
 def FeatureToExtension(feature):
@@ -77,11 +89,14 @@ def LabelFiles(src, feature, exact_path=None, label=None):
 
         return train_files, train_labels, test_files, test_labels
     elif exact_path is not None and label is not None:
-        files = np.array(GetFiles(src + exact_path, feature))
-        labels = np.array([label] * len(files))
+        files0 = np.array(GetFiles(exact_path[0], feature))
+        labels = np.array([label[0]] * len(files0))
+        files1 = np.array(GetFiles(exact_path[1], feature))
+        labels = np.concatenate((labels, np.array([0] * len(files1))), axis=0)
+        files = np.concatenate((files0, files1), axis=0)
         return files, labels
     else:
-        raise Exception("Type both exact_path and label or leave it as None for LabelFiles funtion")
+        raise Exception("Type both exact_paths and labels (target first, second non-target) or leave it as None for LabelFiles funtion")
 
 
 if __name__ == "__main__":
@@ -125,3 +140,11 @@ if __name__ == "__main__":
                                         feature=feature, 
                                         frame_reduction=frame_reduction, reduce_dimension=True, 
                                         second_pass=True, sdtw=True, cluster=True, metric='cosine', known=True)
+    if system == 'fuzzy_match_base':
+        result_list = FuzzyStringSystem.FuzzyMatchSystem([train_files, train_labels], [test_files, test_labels], system=system)
+    if system == 'fuzzy_match_pau_analysis':
+        result_list = FuzzyStringSystem.FuzzyMatchSystem([train_files, train_labels], [test_files, test_labels], system=system)
+    if system == 'rqacluster_fuzzy_match_unknown':
+        result_list = FuzzyStringSystem.FuzzyMatchSystem([train_files, train_labels], [test_files, test_labels], system=system, clust_feature=cluster_feature)
+    if system == 'rqacluster_fuzzy_match_known':
+        result_list = FuzzyStringSystem.FuzzyMatchSystem([train_files, train_labels], [test_files, test_labels], system=system, clust_feature=cluster_feature)

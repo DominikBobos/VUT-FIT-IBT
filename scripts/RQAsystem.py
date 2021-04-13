@@ -90,6 +90,7 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
     rqa_list_clear = []
     clust_time = []
     clust_list = []
+    cache = {}
     if frame_reduction is None:
         frame_reduction = rqa_list[0][2]        # get the reduction from the imported rqa_list 
     for audio in rqa_list:
@@ -108,9 +109,13 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
             continue
         start_time = time.time()
         new_cluster = []   # filepath, frames to compare, frame_reduction, DTWdistance, length of sliced audio 
-        parsed_file = ArrayFromFeatures.Parse(file[0])
-        file_array = ArrayFromFeatures.GetArray(file[0], feature, True)
-        file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+        if file[0].split('/')[-1] in cache:
+            parsed_file, file_array = cache[file[0].split('/')[-1]]
+        else:
+            parsed_file = ArrayFromFeatures.Parse(file[0])
+            file_array = ArrayFromFeatures.GetArray(file[0], feature, True)
+            file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+            cache[file[0].split('/')[-1]] = [parsed_file, file_array]
         new_cluster.append([file[0], file[1], file[2], 0.0, len(file[1])*file[2]])
         for idx_nested, file_nested in enumerate(rqa_list_clear):
             # if nested file is already processed
@@ -118,9 +123,13 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
                 continue
             if file[0].split('/')[-1] == file_nested[0].split('/')[-1]:
                 continue
-            parsed_file_nested = ArrayFromFeatures.Parse(file_nested[0])
-            file_nested_array = ArrayFromFeatures.GetArray(file_nested[0], feature, True)
-            file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+            if file_nested[0].split('/')[-1] in cache:
+                parsed_file_nested, file_nested_array = cache[file_nested[0].split('/')[-1]]
+            else:
+                parsed_file_nested = ArrayFromFeatures.Parse(file_nested[0])
+                file_nested_array = ArrayFromFeatures.GetArray(file_nested[0], feature, True)
+                file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+                cache[file_nested[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
             # file_nested_array = ArrayFromFeatures.CompressFrames(file_nested_array, size=frame_reduction)
             start = int(file[1][0][0]) * file[2] // frame_reduction 
             end = int(file[1][-1][0]) * file[2] // frame_reduction
@@ -152,11 +161,15 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
         if len(cluster) == 1:
             cluster_with_one_file.append([idx, cluster[0]]) 
     for cluster in cluster_with_one_file:
-        #chcem proste ocekova   t ci sa nahodou clustre o velkosti jedna nedaju este niekde inde zaradit takze na ne zas pustim sdtw
+        #chcem proste ocekovat ci sa nahodou clustre o velkosti jedna nedaju este niekde inde zaradit takze na ne zas pustim sdtw
         start_time = time.time()
-        parsed_file = ArrayFromFeatures.Parse(cluster[1][0])
-        file_array = ArrayFromFeatures.GetArray(cluster[1][0], feature, True)
-        file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+        if cluster[1][0].split('/')[-1] in cache:
+            parsed_file, file_array = cache[cluster[1][0].split('/')[-1]]
+        else:
+            parsed_file = ArrayFromFeatures.Parse(cluster[1][0])
+            file_array = ArrayFromFeatures.GetArray(cluster[1][0], feature, True)
+            file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+            cache[cluster[1][0].split('/')[-1]] = [parsed_file, file_array]
         for idx_nested, cluster_nested in enumerate(clust_list):
             have_hit = False
             if idx_nested in [index for sublist in cluster_with_one_file for index in sublist]: #comparing the cluster of size one 
@@ -164,9 +177,13 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
             for idx_file, file in enumerate(cluster_nested):
                 if idx_file > 2:   # go to next when first three are compared
                     break
-                parsed_file_nested = ArrayFromFeatures.Parse(file[0])
-                file_nested_array = ArrayFromFeatures.GetArray(file[0], feature, True)
-                file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+                if file[0].split('/')[-1] in cache:
+                    parsed_file_nested, file_nested_array = cache[file[0].split('/')[-1]]
+                else:
+                    parsed_file_nested = ArrayFromFeatures.Parse(file[0])
+                    file_nested_array = ArrayFromFeatures.GetArray(file[0], feature, True)
+                    file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+                    cache[file[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
                 start = int(cluster[1][1][0][0]) * cluster[1][2] // frame_reduction 
                 end = int(cluster[1][1][-1][0]) * cluster[1][2] // frame_reduction
                 start_nested = int(file[1][0][0]) * file[2] // frame_reduction 
@@ -205,9 +222,9 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
             print(item[0], item[-2])
         print("+__________________________________+")
 
-    ArrayFromFeatures.SavePickle("evaluations/objects/cluster_rqa_list_{}.pkl".format(feature), clust_list)
+    ArrayFromFeatures.SavePickle("evaluations/objects/cluster_rqa_list_{}_{}.pkl".format(feature, frame_reduction), clust_list)
 
-    ft = open("timeClusterRQA_unknown_{}.txt".format(feature), "a")
+    ft = open("timeClusterRQA_unknown_{}_{}.txt".format(feature,frame_reduction), "a")
     ft.write("TOTAL_MEAN:{}\tTOTAL_TIME:{}\n".format(np.mean(clust_time), np.sum(clust_time)))
     ft.close()
 
@@ -228,7 +245,7 @@ def RqaAnalysis(data, rqa_threshold, frame_reduction, feature, reduce_dimension,
                   time.time() - start_time)
             rqa_time.append(time.time() - start_time)
             if not second_pass:
-                f = open("evalRQA_{}.txt".format(feature), "a")
+                f = open("evalRQA_unknown_{}_{}.txt".format(feature, frame_reduction), "a")
                 append_string = "{}\t{}\t{}\t{}\t{}\n".format(
                     file.split('/')[-1],
                     data[1][idx],
@@ -240,9 +257,9 @@ def RqaAnalysis(data, rqa_threshold, frame_reduction, feature, reduce_dimension,
                 f.close()
             continue
         file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
-        reduced_array = np.compress(
-            [True if i % frame_reduction == 0 else False for i in range(file_array.shape[0])], file_array, axis=0)
-        rec_matrix = librosa.segment.recurrence_matrix(reduced_array.T, width=30, k=reduced_array.shape[0] // 10,
+        # reduced_array = ArrayFromFeatures.CompressFrames(file_array, frame_reduction)
+        reduced_array = ArrayFromFeatures.ReduceFrames(file_array, frame_reduction)
+        rec_matrix = librosa.segment.recurrence_matrix(reduced_array.T, width=40//frame_reduction, k=reduced_array.shape[0] // 10,
                                                        mode='affinity',
                                                        metric='cosine')  # ['connectivity', 'distance', 'affinity']
         score, path = librosa.sequence.rqa(rec_matrix, np.inf, np.inf, knight_moves=True)
@@ -255,22 +272,22 @@ def RqaAnalysis(data, rqa_threshold, frame_reduction, feature, reduce_dimension,
             parsed_file[0], "0" if data[1][idx] == 0 else "1:" + parsed_file[3],
             idx + 1, len(data[0]),
             path_length,
-            rqa_list[-1][2],
+            rqa_list[-1][-1],
             time.time() - start_time))
         if not second_pass:
-            f = open("evalRQA_unknown_{}.txt".format(feature), "a")
+            f = open("evalRQA_unknown_{}_{}.txt".format(feature, frame_reduction), "a")
             append_string = "{}\t{}\t{}\t{}\t{}\n".format(
                 file.split('/')[-1],
                 data[1][idx],
                 "0" if (rqa_list[-1][1] == []) or (rqa_list[-1][2] > rqa_threshold) else "1",
                 path_length,
-                rqa_list[-1][2])
+                rqa_list[-1][-1])
             result_list.append(append_string)
             f.write(append_string)
             f.close()
     print("RQA mean:", np.mean(rqa_time), "RQA total:", np.sum(rqa_time))
     if not second_pass:
-        ft = open("timeRQA_unknown_{}.txt".format(feature), "a")
+        ft = open("timeRQA_unknown_{}_{}.txt".format(feature, frame_reduction), "a")
         ft.write("TOTAL_MEAN:{}\tTOTAL_TIME:{}\n".format(np.mean(rqa_time), np.sum(rqa_time)))
         ft.close()
     return rqa_list, rqa_time, result_list
@@ -294,11 +311,13 @@ def RqaDtw(train=None, test=None, feature='mfcc', frame_reduction=1, reduce_dime
     if cluster:
         hit_threshold = DTWsystem.GetThreshold('rqa_cluster_system', feature, 'cosine')
     else:
-        rqa_threshold, hit_threshold, loop_count = DTWsystem.GetThreshold(system, feature)
+        rqa_threshold, hit_threshold, loop_count = DTWsystem.GetThreshold(system, feature, metric)
 
     if not known:
-        rqa_list = ArrayFromFeatures.OpenPickle("evaluations/objects/rqa_list_{}.pkl".format(feature))
-
+        try:
+            rqa_list = ArrayFromFeatures.OpenPickle("evaluations/objects/rqa_list_{}.pkl".format(feature))
+        except:
+            print("No rqa_list found, will tryy to create one")
     if not rqa_list and not known:
         rqa_list, rqa_time, result_list = RqaAnalysis(data=test, rqa_threshold=rqa_threshold,
                                                       frame_reduction=frame_reduction,
@@ -308,7 +327,7 @@ def RqaDtw(train=None, test=None, feature='mfcc', frame_reduction=1, reduce_dime
         rqa_time = [0.]
 
     if not known:
-        ArrayFromFeatures.SavePickle("evaluations/objects/rqa_list_{}.pkl".format(feature), rqa_list)
+        ArrayFromFeatures.SavePickle("evaluations/objects/rqa_list_{}_{}.pkl".format(feature, frame_reduction), rqa_list)
 
     if second_pass and not cluster and not known:
         result_list = DTWsystem.SecondPassDtw(data=test, rqa_list=rqa_list, hit_threshold=hit_threshold,

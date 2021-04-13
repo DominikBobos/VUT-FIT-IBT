@@ -297,13 +297,18 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
     result_list = []
     hits_count = 0
     threshold = [0.9, 1.1]
+    cache = {}
     hit_threshold, loop_count = GetThreshold('basedtw', feature, 'euclidean')
 
     one_round = []
     for idx, file in enumerate(test[0]):  # train[0] == list of files
         start_time = time.time()
-        parsed_file = ArrayFromFeatures.Parse(file)
-        file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+        if file.split('/')[-1] in cache:
+            parsed_file, file_array = cache[file.split('/')[-1]]
+        else:
+            parsed_file = ArrayFromFeatures.Parse(file)
+            file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            cache[file.split('/')[-1]] = [parsed_file, file_array]
         score_list = []
         dist_list = []
         hit_dist = []
@@ -311,8 +316,12 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
         for idx_nested, file_nested in enumerate(test_nested[0]):
             if file.split('/')[-1] == file_nested.split('/')[-1]:  # same file
                 continue
-            parsed_file_nested = ArrayFromFeatures.Parse(file_nested)
-            file_nested_array = ArrayFromFeatures.GetArray(file_nested, feature, reduce_dimension)
+            if file_nested.split('/')[-1] in cache:
+                parsed_file_nested, file_nested_array = cache[file_nested.split('/')[-1]]
+            else:
+                parsed_file_nested = ArrayFromFeatures.Parse(file_nested)
+                file_nested_array = ArrayFromFeatures.GetArray(file_nested, feature, reduce_dimension)
+                cache[file_nested.split('/')[-1]] = [parsed_file_nested, file_nested_array]
             final_dist, wp = fastdtw(file_array, file_nested_array, dist=euclidean)
             sim_list, ratio_list, score, hit = SimilarityNew(np.asarray(wp), threshold)
             final_dist = final_dist / (file_array.shape[0] + file_nested_array.shape[0])
@@ -372,11 +381,16 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
 def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduce_dimension, loop_count, rqa_time, sdtw):
     dtw_time = []
     result_list = []
+    cache = {}
     for idx, file in enumerate(data[0]):
         start_time = time.time()
-        parsed_file = ArrayFromFeatures.Parse(file)
-        file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
-        file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+        if file.split('/')[-1] in cache:
+            parsed_file, file_array = cache[file.split('/')[-1]]
+        else:
+            parsed_file = ArrayFromFeatures.Parse(file)
+            file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+            cache[file.split('/')[-1]] = [parsed_file, file_array]
         # file_array = ArrayFromFeatures.CompressFrames(file_array, size=frame_reduction)
 
         if float(parsed_file[-1]) < 3.0:  # skipping samples of total duration shorter than 3seconds
@@ -394,15 +408,20 @@ def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduc
             if file.split('/')[-1] == rqa_item[0].split('/')[-1]:
                 continue
             nested_loop_count += 1
-            parsed_file_nested = ArrayFromFeatures.Parse(rqa_item[0])
-            file_nested_array = ArrayFromFeatures.GetArray(rqa_item[0], feature, reduce_dimension)
-            file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+            if rqa_item[0].split('/')[-1] in cache:
+                parsed_file_nested, file_nested_array = cache[rqa_item[0].split('/')[-1]]
+            else:
+                parsed_file_nested = ArrayFromFeatures.Parse(rqa_item[0])
+                file_nested_array = ArrayFromFeatures.GetArray(rqa_item[0], feature, reduce_dimension)
+                file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+                cache[rqa_item[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
             # file_nested_array = ArrayFromFeatures.CompressFrames(file_nested_array, size=frame_reduction)
             start = int(rqa_item[1][0][0]) * rqa_item[2] // frame_reduction 
             end = int(rqa_item[1][-1][0]) * rqa_item[2] // frame_reduction
             if sdtw:
                 path = SegmentalDTW(file_nested_array[start:end], file_array, R=5, L=300 / frame_reduction, dist='cosine')
-                # wp = np.asarray(path[1][3])*frame_reduction   # not necessary, uncomment when want to know the warping path
+                wp = np.asarray(path[1][3])*frame_reduction   # not necessary, uncomment when want to know the warping path
+                occurence_frames = [wp[-1][1], wp[0][1]]
                 dtw_distance = path[0]
             else:
                 cost_matrix, wp = librosa.sequence.dtw(X=file_array.T,
@@ -421,7 +440,10 @@ def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduc
             if dtw_distance < hit_threshold:
                 have_hit = True
                 f = open("evalRQA_{}_unknown_{}.txt".format("SDTW" if sdtw == True else "DTW", feature), "a")
-                append_string = "{}\t{}\t{}\t{}\n".format(file.split('/')[-1], data[1][idx], "1", dtw_distance)
+                if sdtw:
+                    append_string = "{}\t{}\t{}\t{}-{}\t{}\n".format(file.split('/')[-1], data[1][idx], "1", occurence_frames[0], occurence_frames[1], dtw_distance)
+                else:
+                    append_string = "{}\t{}\t{}\t{}\n".format(file.split('/')[-1], data[1][idx], "1", dtw_distance)
                 result_list.append(append_string)  # train[1] == label
                 f.write(append_string)
                 f.close()
@@ -451,11 +473,16 @@ def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduc
 def SecondPassCluster(data, clust_list, hit_threshold, frame_reduction, feature, reduce_dimension, rqa_time, metric, sdtw, known):
     dtw_time = []
     result_list = []
+    cache = {}
     for idx, file in enumerate(data[0]):
         start_time = time.time()
-        parsed_file = ArrayFromFeatures.Parse(file)
-        file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
-        file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+        if file.split('/')[-1] in cache:
+            parsed_file, file_array = cache[file.split('/')[-1]]
+        else:
+            parsed_file = ArrayFromFeatures.Parse(file)
+            file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
+            cache[file.split('/')[-1]] = [parsed_file, file_array]
         # file_array = ArrayFromFeatures.CompressFrames(file_array, size=frame_reduction)
 
         if float(parsed_file[-1]) < 3.0:  # skipping samples of total duration shorter than 3seconds
@@ -469,15 +496,21 @@ def SecondPassCluster(data, clust_list, hit_threshold, frame_reduction, feature,
         for idx_nested, cluster_nested in enumerate(clust_list):
             have_hit = False
             for idx_file, file_nested in enumerate(cluster_nested):
-                if idx_file > 1:   # go to next when first 3 are compared
+                if idx_file > 1:   # go to next when first 2 are compared
                     break
-                if file[-4:] != file_nested[0][-4:]:   # extension comparision
+                if file[-4:] != file_nested[0][-4:]:   # extension comparision -> could return None
                     file_nested[0] = ArrayFromFeatures.RightExtensionFile(file_nested[0], feature) 
+                if not file_nested[0]: # the wanted file does not exist in the given path 
+                    continue
                 if file.split('/')[-1] == file_nested[0].split('/')[-1]:
                     continue
-                parsed_file_nested = ArrayFromFeatures.Parse(file_nested[0])
-                file_nested_array = ArrayFromFeatures.GetArray(file_nested[0], feature, reduce_dimension)
-                file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+                if file_nested[0].split('/')[-1] in cache:
+                    parsed_file_nested, file_nested_array = cache[file_nested[0].split('/')[-1]]
+                else:
+                    parsed_file_nested = ArrayFromFeatures.Parse(file_nested[0])
+                    file_nested_array = ArrayFromFeatures.GetArray(file_nested[0], feature, reduce_dimension)
+                    file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
+                    cache[file_nested[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
                 start = int(file_nested[1][0][0]) * file_nested[2] // frame_reduction 
                 end = int(file_nested[1][-1][0]) * file_nested[2] // frame_reduction
                 if sdtw:
@@ -486,7 +519,8 @@ def SecondPassCluster(data, clust_list, hit_threshold, frame_reduction, feature,
                                         R=5, 
                                         L=200/frame_reduction, 
                                         dist=metric)
-                    # wp = np.asarray(path[1][3])*frame_reduction   # not necessary, uncomment when want to know the warping path
+                    wp = np.asarray(path[1][3])*frame_reduction  
+                    occurence_frames = [wp[-1][1], wp[0][1]]
                     dtw_distance = path[0]
                     if feature == 'posteriors' and dtw_distance < 0.01:
                         dtw_distance *= 100 # normalization for weird cases
@@ -506,11 +540,14 @@ def SecondPassCluster(data, clust_list, hit_threshold, frame_reduction, feature,
                 if dtw_distance < hit_threshold:
                     have_hit = True
                     f = open("evalRQAclustered_{}_{}_{}.txt".format("SDTW" if sdtw == True else "DTW", "known" if known else "unknown", feature), "a")
-                    append_string = "{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], data[1][idx], "1", idx_nested, dtw_distance)
+                    if sdtw:
+                        append_string = "{}\t{}\t{}\t{}\t{}-{}\t{}\n".format(file.split('/')[-1], data[1][idx], "1", idx_nested, occurence_frames[0], occurence_frames[1], dtw_distance)
+                    else:
+                        append_string = "{}\t{}\t{}\t{}\t{}\n".format(file.split('/')[-1], data[1][idx], "1", idx_nested, dtw_distance)
                     result_list.append(append_string)  # train[1] == label
                     f.write(append_string)
                     f.close()
-                    # if wanted to add to cluster
+                    # if it is wanted to add to cluster
                     # clust_list[idx_nested].append([cluster[1][0], cluster[1][1], cluster[1][2], 
                     #                     dtw_distance, len(cluster[1][1])*cluster[1][2]])
                     # clust_list[idx_nested] = sorted(clust_list[idx_nested], key = lambda x: x[-1]) # sort with new item

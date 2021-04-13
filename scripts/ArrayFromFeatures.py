@@ -3,6 +3,7 @@ from python_speech_features import mfcc
 from scipy.io import wavfile
 import pickle
 from HTK import HTKFile
+import os
 
 
 def GetMFCC(file, verbose=False):
@@ -32,8 +33,9 @@ def LoadString(file):
     lines = f.readlines()
     frames = []
     lengths = []
+    index_map = {}
     string = ''
-    for line in lines:
+    for idx, line in enumerate(lines):
         # [0] - start 
         # [1] - end
         # [2] - phoneme
@@ -42,12 +44,13 @@ def LoadString(file):
         start = int(split_line[0][:-5] if split_line[0] != '0' else 0)
         end = int(split_line[1][:-5])
         phoneme = split_line[2] if split_line[2] != 'pau' else " "  # convert pause to space
-        length = float(split_line[3][:-2])
+        index_map[idx] = phoneme
+        length = abs(float(split_line[3][:-1]))
         frames.append([start, end])
         string += phoneme
         lengths.append(length)
     f.close()
-    return [frames, lengths, string]
+    return [frames, lengths, index_map, string]
 
 
 def ReduceDimension(feature):
@@ -129,13 +132,17 @@ def RightExtensionFile(file, feature):
         raise Exception("Unsupported feature '{}'".format(feature))
 
     if file[-4:] == extension:
-        return file
+        result = file
     elif file[-4:] == '.wav':
-        return GetOneFolderDeep(file, folder_extension)[:-4] + extension 
+        result = GetOneFolderDeep(file, folder_extension)[:-4] + extension 
     elif extension == '.wav':
-        return GetOneFolderUp(file)[:-4] + extension  # from wav folder to the extension folder
+        result = GetOneFolderUp(file)[:-4] + extension  # from wav folder to the extension folder
     else:
-        return Get2RigthFolder(file, folder_extension)[:-4] + extension  # renaming file folder
+        result = Get2RigthFolder(file, folder_extension)[:-4] + extension  # renaming file folder
+    if os.path.exists(result):
+        return result
+    else: 
+        return None
 
 
 def OpenPickle(path):
@@ -173,7 +180,7 @@ def Parse(filename):
         parsed_file.append(float(temp[2][:-4]))  # sample duration in seconds
         parsed_file.append(temp[2][-3:])  # extension format (wav, lin etc.)
         parsed_file.append(float(temp[2][:-4]))  # total duration
-        # print(parsed_file)
+        # [sampleID, cutPart, sampleDuration, extension, totalDuration] -> no pre-recorded message 
         return parsed_file
     else:
         parsed_file.append(float(temp[2]))  # sample duration in seconds

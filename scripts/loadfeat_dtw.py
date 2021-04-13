@@ -250,7 +250,8 @@ def plot_phn_audio(phn_posteriors=None, file=None ,info=[]):
 	feat_name = 'Features'
 	filename = ''
 	if info != []:
-		tick = info[0][-1] / phn_posteriors.shape[0] 
+		# tick = info[0][-1] / phn_posteriors.shape[0] 
+		tick = 0.1
 		if info[0][-2] == "lin":
 			feat_name = 'Phoneme posteriors'
 		else:
@@ -547,11 +548,11 @@ def image_filter(matrix, threshold=0.7, percentile=70, variance=5):
 
 file1 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
 file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(10.06)G(0.18)R(2.88)S(0.95).lin"
-file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
-file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
-# file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
+# file2 = "../../sw00000-A_0_0__A02_ST(0.00)L(44.80)G(5.09)R(14.45)S(1.09).lin"	#with reduced for some reason no hits
+# file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #with seuclidean metrics it makes similarities hits!
+# # file2 = "../../sw00000-A_0_0__B03_ST(0.00)L(10.25)G(5.45)R(3.71)S(1.06).lin"	#with reduced euclidean metrics it makes similarities hits!
 # file1 = "../../sw00000-A_0_0__A10_ST(0.00)L(53.39)G(2.30)R(8.83)S(1.04).lin"
-# file2 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
+# # file1 = "../../sw03521-B_1_45__A10_ST(0.00)L(9.05)G(5.79)R(1.51)S(1.07).lin"
 # file1 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 # file2 = "../../sw03720-B_5_30__A02_ST(0.00)L(7.36)G(-0.61)R(2.26)S(1.04).lin"
 
@@ -578,16 +579,16 @@ file2 = "../../sw00000-A_0_0__B10_ST(0.00)L(165.93)G(4.10)R(25.78)S(1.03).lin" #
 # file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_clear/eval_clear_bnf/sw02514-A_4_90.fea"
 # file2 = "/home/dominik/Desktop/bak/dev_data/eval/eval_goal/eval_goal_bnf/sw02110-B_2_120__A02_ST(0.00)L(67.43)G(3.60)R(22.01)S(1.10).fea"
 
-file2= "/home/dominik/Desktop/bak/TZ/BUTstrategically.wav"
-file1= "/home/dominik/Desktop/bak/TZ/BUTresearch2.wav"
+# file2= "/home/dominik/Desktop/bak/TZ/BUTstrategically.wav"
+# file1= "/home/dominik/Desktop/bak/TZ/BUTresearch2.wav"
 
 # parsed1 = parse(file1)
 # parsed2 = parse(file2)
 
-feature1, feature2 = get_MFCC(file1, file2)
-# feature1, feature2 = load_HTK(file1, file2)
-# feature1 = reduce_dimension(feature1)
-# feature2 = reduce_dimension(feature2)
+# feature1, feature2 = get_MFCC(file1, file2)
+feature1, feature2 = load_HTK(file1, file2)
+feature1 = reduce_dimension(feature1)
+feature2 = reduce_dimension(feature2)
 
 # import time
 # count = []
@@ -599,81 +600,120 @@ feature1, feature2 = get_MFCC(file1, file2)
 
 
 
-cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', subseq=False, global_constraints=False, weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
+# cost_matrix1, wp1 = librosa.sequence.dtw(X=feature1.T, Y=feature2.T, metric='euclidean', subseq=False, global_constraints=False, weights_mul=np.array([np.sqrt([2]),1,1], dtype=np.float64))	#cosine rychlejsie
 # from fastdtw import fastdtw
 # from scipy.spatial.distance import euclidean
 # cost_matrix1, wp1 = fastdtw(feature1, feature2, dist=euclidean)
 # cost_matrix2, dist2, wp2 = my_dtw(feature1, feature2)
 # print(feature1)
-print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
+# print("Distance", cost_matrix1[wp1[-1, 0], wp1[-1, 1]])
 # print("Distance", cost_matrix1/(feature1.shape[0]+feature2.shape[0]))
 #cost_matrix1 = cdist(feature1, feature2, metric='euclidean')
 #wp1 = np.asarray(wp1)
 # wp1 = [list(elem) for elem in wp1]
 #print(type(wp1), np.shape(wp1) ,wp1)
 # print("My distance", dist2)
-sim_list1 = similarity_new(wp1)
+# sim_list1 = similarity_new(wp1)
 # sim_list2 = similarity_new(wp2)
 # similarity_new(wp1)
 
 
 
-import pyximport
-pyximport.install(setup_args={
-    "include_dirs": np.get_include()})
-from third_party_scripts.seg_dtw import sdtw, cy_sdtw, slndtw
-# # feature1 = np.compress([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
-# # feature2 = np.compress([True if i % 5 == 0 else False for i in range(feature2.shape[0])], feature2, axis=0)
-# import ArrayFromFeatures
+# import pyximport
+# pyximport.install(setup_args={
+#     "include_dirs": np.get_include()})
+# from third_party_scripts.seg_dtw import sdtw, cy_sdtw, slndtw
+# feature1 = np.compress([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
+# feature2 = np.compress([True if i % 5 == 0 else False for i in range(feature2.shape[0])], feature2, axis=0)
+import ArrayFromFeatures
 # feature1 = ArrayFromFeatures.ReduceFrames(feature1, size=10)
 # feature2 = ArrayFromFeatures.ReduceFrames(feature2, size=10)
 # path= sdtw.segmental_dtw(feature1, feature2, R=4, L=200, dist='euclidean')
 # # path= slndtw.sln_dtw(feature1, feature2)
 # print("Distance", path[0])
 # wp1=np.asarray(path[1][3])
+# print(wp1[-1][1]*10, wp1[0][1]*10)
+# wp1 = np.asarray(path[1][3])*10
 # wp1 = np.asarray(path[1])
 
 # import time
 # start = time.time()
-gram_matrix = gram_matrix(feature1)
-gram_matrix = image_filter(gram_matrix)
+# gram_matrix = gram_matrix(feature1)
+# gram_matrix = image_filter(gram_matrix)
 # print(time.time() - start)
 # gram_matrix = None
 # import skimage.measure
 # test = skimage.measure.block_reduce(feature1, (feature1.shape[0], feature1.shape[1]), np.mean)
 # test = pooling(feature1, ksize=(feature1.shape[0]//2, feature1.shape[1]), method='mean')
 
-"""
-feature1 = np.compress([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
-
-# chroma_stack = librosa.feature.stack_memory(feature1.T, n_steps=10, delay=3)
+reduction = 1
+rec_mat_time = []
+original_shape = feature1.shape[0]
+feature1_orig = feature1
 import time
-start = time.time()
-gram_matrix = librosa.segment.recurrence_matrix(feature1.T,width=30, k=feature1.shape[0]//10,
+for i in range(100):
+	start = time.time()
+	feature1 = ArrayFromFeatures.ReduceFrames(feature1_orig, size=reduction)
+	# chroma_stack = librosa.feature.stack_memory(feature1.T, n_steps=10, delay=3)
+
+	gram_matrix = librosa.segment.recurrence_matrix(feature1.T,width=40//reduction, k=feature1.shape[0]//reduction,
+	                                        mode='affinity',	#['connectivity', 'distance', 'affinity']
+	                                        metric='cosine')
+
+	# print("takto dlho trva recc matrix", time.time() - start, feature1.shape)
+	# using infinite cost for gaps enforces strict path continuation
+	# start = time.time()
+	L_score, L_path = librosa.sequence.rqa(gram_matrix, np.inf, np.inf,
+	                                       knight_moves=True)
+	rec_mat_time.append(time.time() - start)
+	print(i)
+print("100 opakovani s reduction", reduction, "cas:", np.mean(rec_mat_time))
+'''
+# feature1 = np.co4press([True if i % 5 == 0 else False for i in range(feature1.shape[0])], feature1, axis=0)
+feature1 = ArrayFromFeatures.ReduceFrames(feature1_orig, size=reduction)
+# chroma_stack = librosa.feature.stack_memory(feature1.T, n_steps=10, delay=3)
+
+gram_matrix = librosa.segment.recurrence_matrix(feature1.T,width=40//reduction, k=feature1.shape[0]//reduction,
                                         mode='affinity',	#['connectivity', 'distance', 'affinity']
                                         metric='cosine')
-print("takto dlho trva recc matrix", time.time() - start, feature1.shape)
+
+# print("takto dlho trva recc matrix", time.time() - start, feature1.shape)
 # using infinite cost for gaps enforces strict path continuation
-start = time.time()
+# start = time.time()
 L_score, L_path = librosa.sequence.rqa(gram_matrix, np.inf, np.inf,
                                        knight_moves=True)
+
+
 print("spocitane idem uz len vykreslit", time.time() - start)
-fig, ax = plt.subplots(ncols=2)
+fig, ax = plt.subplots(ncols=2, figsize=(8, 5))
 # librosa.display.specshow(gram_matrix, x_axis='frames', y_axis='frames', ax=ax[0])
 ax[0].imshow(gram_matrix, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
+ax[0].set_title('Recurrence matrix')
+ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * reduction / 100))
+ax[0].xaxis.set_major_formatter(ticks_x)
+ax[0].yaxis.set_major_formatter(ticks_x)
+ax[0].set_xlabel("Time [s]")
+ax[0].set_ylabel("Time [s]")
+ax[0].tick_params(axis='both')
 # ax[0].set(title='Recurrence matrix')
 # librosa.display.specshow(L_score, x_axis='frames', y_axis='frames', ax=ax[1])
 ax[1].imshow(L_score, interpolation='nearest', cmap=cm.gist_earth, origin='lower', aspect='equal')
 # ax[1].set(title='Alignment score matrix')
-ax[1].plot(L_path[:, 1], L_path[:, 0], label='Optimal path', color='c')
+ax[1].plot(L_path[:, 1], L_path[:, 0], label='Optimal path', color='c',linewidth=3.0)
 ax[1].legend()
+ax[1].set_title('RQA analysis')
 ax[1].label_outer()
-
+ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * reduction / 100))
+ax[1].xaxis.set_major_formatter(ticks_x)
+ax[1].yaxis.set_major_formatter(ticks_x)
+ax[1].tick_params(axis='both')
+ax[1].set_xlabel("Time [s]")
+fig.suptitle("Original frames count:{}\nReduced frames count:{}".format(original_shape, feature1.shape[0]) )
 print(len(L_path))
 print("SUM", np.sum(gram_matrix[L_path])/len(L_path))
 print("RQA SUM", np.sum(L_score[L_path])/len(L_path))
+'''
 
-"""
 # parsed1 = parse(file1)
 # parsed2 = parse(file2)
 
@@ -706,11 +746,11 @@ print("RQA SUM", np.sum(L_score[L_path])/len(L_path))
 # ax[1].label_outer()
 
 
-sim_list1=None 
-gram_matrix=None
-plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
+# sim_list1=None 
+# gram_matrix=None
+# plot(feature1, feature2, cost_matrix1, wp1, sim_list1, dtw_name="Librosa", info=[], gram_matrix=gram_matrix)
 # plot(dist=cost_matrix2, wp=wp2, sim_list=sim_list2, dtw_name="My", gram_matrix=None)
-# plot_phn_audio(feature2, file=file2, info=[parsed2])
+plot_phn_audio(feature1, file=file1, info=[parsed1])
 
 plt.show()
 
