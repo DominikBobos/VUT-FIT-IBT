@@ -199,15 +199,18 @@ def Parse(filename):
 
 
 def GetArray(file, feature, reduce_dimension):
-    if feature == 'mfcc':
-        file_arr = GetMFCC(file)
-    if feature == 'posteriors':
-        file_arr = LoadHTK(file)
-        if reduce_dimension:
-            file_arr = ReduceDimension(file_arr)
-    if feature == 'bottleneck':
-        file_arr = LoadHTK(file)
-    return file_arr
+    try:
+        if feature == 'mfcc':
+            file_arr = GetMFCC(file)
+        if feature == 'posteriors':
+            file_arr = LoadHTK(file)
+            if reduce_dimension:
+                file_arr = ReduceDimension(file_arr)
+        if feature == 'bottleneck':
+            file_arr = LoadHTK(file)
+        return file_arr
+    except NotImplementedError:
+        return []
 
 if __name__ == '__main__':
     pass

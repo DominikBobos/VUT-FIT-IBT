@@ -21,6 +21,7 @@ parser.add_argument("--src")
 parser.add_argument("--feature", help="Features to use. (mfcc, posteriors, bottleneck, string)")
 parser.add_argument("--cluster-feature", help="Features to use. (mfcc, posteriors, bottleneck)")
 parser.add_argument("-v", "--verbose", action="store_true")
+parser.add_argument("-d", "--dev", action="store_true", help="Development mode")
 parser.add_argument("--system", required=True, help="Available systems: basedtw, arenjansen/rqa_unknown, rqa_dtw_unknown/2pass_dtw_unknown, rqa_sdtw_unknown/2pass_sdtw_unknown,")
 parser.add_argument("--frame-reduction", type=CheckPositive, help="Downsampling the the feature vector, averaging given N-frames")
 arguments = parser.parse_args()
@@ -73,7 +74,7 @@ def GetFiles(file, feature):
     return glob.glob(file + FeatureToExtension(feature))
 
 
-def LabelFiles(src, feature, exact_path=None, label=None):
+def LabelFiles(src, feature, exact_path=None, label=None, eval_only=False):
     if exact_path is None and label is None:
         test_target = np.array(GetFiles(src + 'eval/eval_goal/', feature))
         test_labels = np.array([1] * len(test_target))  # 1 obtain pre-recorded messsage
@@ -95,13 +96,23 @@ def LabelFiles(src, feature, exact_path=None, label=None):
         labels = np.concatenate((labels, np.array([0] * len(files1))), axis=0)
         files = np.concatenate((files0, files1), axis=0)
         return files, labels
+    elif eval_only:
+        return mp.array(GetFiles(exact_path))
     else:
         raise Exception("Type both exact_paths and labels (target first, second non-target) or leave it as None for LabelFiles funtion")
 
 
 if __name__ == "__main__":
     system = arguments.system.lower()
-    train_files, train_labels, test_files, test_labels = LabelFiles(src, feature)
+    exact_path = None
+    label = None
+    if not arguments.dev:
+        exact_path = [src+'eval_goal/', src+'eval_clear/']
+        label = [1, 0]
+        test_files, test_labels = LabelFiles(src, feature, exact_path=exact_path, label=label)
+        train_files, train_labels = None, None
+    else:
+        train_files, train_labels, test_files, test_labels = LabelFiles(src, feature)
     frame_reduction = arguments.frame_reduction if arguments.frame_reduction is not None else 1
     if system == 'basedtw':
         result_list = DTWsystem.BaseDtwUnknown([train_files, train_labels], [test_files, test_labels],

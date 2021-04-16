@@ -114,6 +114,8 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
         else:
             parsed_file = ArrayFromFeatures.Parse(file[0])
             file_array = ArrayFromFeatures.GetArray(file[0], feature, True)
+            if len(file_array) == 0:
+                continue 
             file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
             cache[file[0].split('/')[-1]] = [parsed_file, file_array]
         new_cluster.append([file[0], file[1], file[2], 0.0, len(file[1])*file[2]])
@@ -128,6 +130,8 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
             else:
                 parsed_file_nested = ArrayFromFeatures.Parse(file_nested[0])
                 file_nested_array = ArrayFromFeatures.GetArray(file_nested[0], feature, True)
+                if len(file_nested_array) == 0:
+                    continue 
                 file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
                 cache[file_nested[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
             # file_nested_array = ArrayFromFeatures.CompressFrames(file_nested_array, size=frame_reduction)
@@ -168,6 +172,8 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
         else:
             parsed_file = ArrayFromFeatures.Parse(cluster[1][0])
             file_array = ArrayFromFeatures.GetArray(cluster[1][0], feature, True)
+            if len(file_array) == 0:
+                continue 
             file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
             cache[cluster[1][0].split('/')[-1]] = [parsed_file, file_array]
         for idx_nested, cluster_nested in enumerate(clust_list):
@@ -182,6 +188,8 @@ def RqaCluster(rqa_list_pkl, feature, playback=False, metric='cosine', frame_red
                 else:
                     parsed_file_nested = ArrayFromFeatures.Parse(file[0])
                     file_nested_array = ArrayFromFeatures.GetArray(file[0], feature, True)
+                    if len(file_nested_array) == 0:
+                        continue 
                     file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
                     cache[file[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
                 start = int(cluster[1][1][0][0]) * cluster[1][2] // frame_reduction 
@@ -257,12 +265,16 @@ def RqaAnalysis(data, rqa_threshold, frame_reduction, feature, reduce_dimension,
                 f.close()
             continue
         file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+        if len(file_array) == 0:
+            continue 
         # reduced_array = ArrayFromFeatures.CompressFrames(file_array, frame_reduction)
         reduced_array = ArrayFromFeatures.ReduceFrames(file_array, frame_reduction)
         rec_matrix = librosa.segment.recurrence_matrix(reduced_array.T, width=40//frame_reduction, k=reduced_array.shape[0] // 10,
                                                        mode='affinity',
                                                        metric='cosine')  # ['connectivity', 'distance', 'affinity']
         score, path = librosa.sequence.rqa(rec_matrix, np.inf, np.inf, knight_moves=True)
+        if len(path) == 0:
+            continue
         path_length = (int(path[-1][0]) - int(path[0][0])) * frame_reduction
         # only frames longer than 2.5 seconds are valid and giving high score penalty for them
         rqa_list.append([file, path, frame_reduction, np.sum(rec_matrix[path]) / (int(path[-1][0]) - int(path[0][0]))]
@@ -317,7 +329,7 @@ def RqaDtw(train=None, test=None, feature='mfcc', frame_reduction=1, reduce_dime
         try:
             rqa_list = ArrayFromFeatures.OpenPickle("evaluations/objects/rqa_list_{}.pkl".format(feature))
         except:
-            print("No rqa_list found, will tryy to create one")
+            print("No rqa_list found, will try to create one")
     if not rqa_list and not known:
         rqa_list, rqa_time, result_list = RqaAnalysis(data=test, rqa_threshold=rqa_threshold,
                                                       frame_reduction=frame_reduction,

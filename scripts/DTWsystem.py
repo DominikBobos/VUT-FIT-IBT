@@ -147,7 +147,7 @@ def SimilarityNew(wp, interval=None):
         if constant_false >= 25:
             del tmp_list[-1]
             false_trend -= 1
-            for i in range(constant_false):
+            for i in range(constant_false): # cleaning the list of the constant false points
                 if len(tmp_list) > 0:
                     del tmp_list[-1]
                     false_trend -= 1
@@ -186,13 +186,13 @@ def SimilarityNew(wp, interval=None):
 
 
 def InitCheckShuffle(train, test):
-    if test is None:
+    if test is None or test[0] is None:
         test = []
         test_nested = []
     else:
         test[0], test[1] = shuffle(test[0], test[1], random_state=10)
         test_nested = test.copy()
-    if train is None:
+    if train is None or train[0] is None:
         train = []
         train_nested = []
     else:
@@ -222,8 +222,8 @@ def GetThreshold(system, feature, metric):
         if feature not in ['mfcc', 'posteriors', 'bottleneck']:
             raise Exception("For BaseDTW system use only mfcc, posteriors or bottleneck feature vectors, not {}".format(feature))
         rqa_threshold = 500.0
-        hit_threshold = 50  # don't care
-        loop_count = 50     # don't care
+        hit_threshold = 50  # don't care random value
+        loop_count = 50     # don't care random value
         return rqa_threshold, hit_threshold, loop_count
 
     if system == 'rqa_dtw_unknown' or system == '2pass_dtw_unknown':
@@ -299,15 +299,18 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
     threshold = [0.9, 1.1]
     cache = {}
     hit_threshold, loop_count = GetThreshold('basedtw', feature, 'euclidean')
+    loop_count == len(test[0]) // 4
 
     one_round = []
-    for idx, file in enumerate(test[0]):  # train[0] == list of files
+    for idx, file in enumerate(test[0]):  # test[0] == list of files
         start_time = time.time()
         if file.split('/')[-1] in cache:
             parsed_file, file_array = cache[file.split('/')[-1]]
         else:
             parsed_file = ArrayFromFeatures.Parse(file)
             file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            if len(file_array) == 0:
+                continue 
             cache[file.split('/')[-1]] = [parsed_file, file_array]
         score_list = []
         dist_list = []
@@ -321,6 +324,8 @@ def BaseDtwUnknown(train=None, test=None, feature='mfcc', reduce_dimension=True)
             else:
                 parsed_file_nested = ArrayFromFeatures.Parse(file_nested)
                 file_nested_array = ArrayFromFeatures.GetArray(file_nested, feature, reduce_dimension)
+                if len(file_nested_array) == 0:
+                    continue 
                 cache[file_nested.split('/')[-1]] = [parsed_file_nested, file_nested_array]
             final_dist, wp = fastdtw(file_array, file_nested_array, dist=euclidean)
             sim_list, ratio_list, score, hit = SimilarityNew(np.asarray(wp), threshold)
@@ -389,6 +394,8 @@ def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduc
         else:
             parsed_file = ArrayFromFeatures.Parse(file)
             file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            if len(file_array) == 0:
+                continue 
             file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
             cache[file.split('/')[-1]] = [parsed_file, file_array]
         # file_array = ArrayFromFeatures.CompressFrames(file_array, size=frame_reduction)
@@ -413,6 +420,8 @@ def SecondPassDtw(data, rqa_list, hit_threshold, frame_reduction, feature, reduc
             else:
                 parsed_file_nested = ArrayFromFeatures.Parse(rqa_item[0])
                 file_nested_array = ArrayFromFeatures.GetArray(rqa_item[0], feature, reduce_dimension)
+                if len(file_nested_array) == 0:
+                    continue 
                 file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
                 cache[rqa_item[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
             # file_nested_array = ArrayFromFeatures.CompressFrames(file_nested_array, size=frame_reduction)
@@ -481,6 +490,8 @@ def SecondPassCluster(data, clust_list, hit_threshold, frame_reduction, feature,
         else:
             parsed_file = ArrayFromFeatures.Parse(file)
             file_array = ArrayFromFeatures.GetArray(file, feature, reduce_dimension)
+            if len(file_array) == 0:
+                continue 
             file_array = ArrayFromFeatures.ReduceFrames(file_array, size=frame_reduction)
             cache[file.split('/')[-1]] = [parsed_file, file_array]
         # file_array = ArrayFromFeatures.CompressFrames(file_array, size=frame_reduction)
@@ -509,6 +520,8 @@ def SecondPassCluster(data, clust_list, hit_threshold, frame_reduction, feature,
                 else:
                     parsed_file_nested = ArrayFromFeatures.Parse(file_nested[0])
                     file_nested_array = ArrayFromFeatures.GetArray(file_nested[0], feature, reduce_dimension)
+                    if len(file_nested_array) == 0:
+                        continue 
                     file_nested_array = ArrayFromFeatures.ReduceFrames(file_nested_array, size=frame_reduction)
                     cache[file_nested[0].split('/')[-1]] = [parsed_file_nested, file_nested_array]
                 start = int(file_nested[1][0][0]) * file_nested[2] // frame_reduction 
